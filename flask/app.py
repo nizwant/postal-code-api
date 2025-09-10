@@ -107,35 +107,112 @@ def get_postal_code(postal_code):
 
 @app.route('/locations', methods=['GET'])
 def get_locations():
+    return jsonify({
+        'available_endpoints': {
+            'provinces': '/locations/provinces',
+            'counties': '/locations/counties', 
+            'municipalities': '/locations/municipalities',
+            'cities': '/locations/cities'
+        }
+    })
+
+@app.route('/locations/provinces', methods=['GET'])
+def get_provinces():
     conn = get_db_connection()
-    
-    # Get unique provinces
     provinces = conn.execute(
         "SELECT DISTINCT province FROM postal_codes WHERE province IS NOT NULL ORDER BY province"
     ).fetchall()
-    
-    # Get unique counties
-    counties = conn.execute(
-        "SELECT DISTINCT county FROM postal_codes WHERE county IS NOT NULL ORDER BY county"
-    ).fetchall()
-    
-    # Get unique municipalities
-    municipalities = conn.execute(
-        "SELECT DISTINCT municipality FROM postal_codes WHERE municipality IS NOT NULL ORDER BY municipality"
-    ).fetchall()
-    
-    # Get unique cities
-    cities = conn.execute(
-        "SELECT DISTINCT city FROM postal_codes WHERE city IS NOT NULL ORDER BY city"
-    ).fetchall()
-    
     conn.close()
     
     return jsonify({
         'provinces': [row['province'] for row in provinces],
+        'count': len(provinces)
+    })
+
+@app.route('/locations/counties', methods=['GET'])
+def get_counties():
+    province = request.args.get('province')
+    
+    conn = get_db_connection()
+    if province:
+        counties = conn.execute(
+            "SELECT DISTINCT county FROM postal_codes WHERE county IS NOT NULL AND LOWER(province) = LOWER(?) ORDER BY county",
+            (province,)
+        ).fetchall()
+    else:
+        counties = conn.execute(
+            "SELECT DISTINCT county FROM postal_codes WHERE county IS NOT NULL ORDER BY county"
+        ).fetchall()
+    conn.close()
+    
+    return jsonify({
         'counties': [row['county'] for row in counties],
+        'count': len(counties),
+        'filtered_by_province': province if province else None
+    })
+
+@app.route('/locations/municipalities', methods=['GET'])
+def get_municipalities():
+    province = request.args.get('province')
+    county = request.args.get('county')
+    
+    query = "SELECT DISTINCT municipality FROM postal_codes WHERE municipality IS NOT NULL"
+    params = []
+    
+    if province:
+        query += " AND LOWER(province) = LOWER(?)"
+        params.append(province)
+    
+    if county:
+        query += " AND LOWER(county) = LOWER(?)"
+        params.append(county)
+    
+    query += " ORDER BY municipality"
+    
+    conn = get_db_connection()
+    municipalities = conn.execute(query, params).fetchall()
+    conn.close()
+    
+    return jsonify({
         'municipalities': [row['municipality'] for row in municipalities],
-        'cities': [row['city'] for row in cities]
+        'count': len(municipalities),
+        'filtered_by_province': province if province else None,
+        'filtered_by_county': county if county else None
+    })
+
+@app.route('/locations/cities', methods=['GET'])
+def get_cities():
+    province = request.args.get('province')
+    county = request.args.get('county')
+    municipality = request.args.get('municipality')
+    
+    query = "SELECT DISTINCT city FROM postal_codes WHERE city IS NOT NULL"
+    params = []
+    
+    if province:
+        query += " AND LOWER(province) = LOWER(?)"
+        params.append(province)
+    
+    if county:
+        query += " AND LOWER(county) = LOWER(?)"
+        params.append(county)
+    
+    if municipality:
+        query += " AND LOWER(municipality) = LOWER(?)"
+        params.append(municipality)
+    
+    query += " ORDER BY city"
+    
+    conn = get_db_connection()
+    cities = conn.execute(query, params).fetchall()
+    conn.close()
+    
+    return jsonify({
+        'cities': [row['city'] for row in cities],
+        'count': len(cities),
+        'filtered_by_province': province if province else None,
+        'filtered_by_county': county if county else None,
+        'filtered_by_municipality': municipality if municipality else None
     })
 
 @app.route('/health', methods=['GET'])

@@ -48,14 +48,63 @@ Example:
 curl "http://localhost:5001/postal-codes/03-506"
 ```
 
-### Get Available Locations
+### Get Available Location Endpoints
 `GET /locations`
 
-Returns lists of all available provinces, counties, municipalities, and cities.
+Returns available location endpoints.
 
 Example:
 ```bash
 curl "http://localhost:5001/locations"
+```
+
+### Get Provinces
+`GET /locations/provinces`
+
+Returns all available provinces.
+
+Example:
+```bash
+curl "http://localhost:5001/locations/provinces"
+```
+
+### Get Counties
+`GET /locations/counties`
+
+Query parameters:
+- `province` - Filter counties by province
+
+Examples:
+```bash
+curl "http://localhost:5001/locations/counties"
+curl "http://localhost:5001/locations/counties?province=mazowieckie"
+```
+
+### Get Municipalities
+`GET /locations/municipalities`
+
+Query parameters:
+- `province` - Filter by province
+- `county` - Filter by county
+
+Examples:
+```bash
+curl "http://localhost:5001/locations/municipalities"
+curl "http://localhost:5001/locations/municipalities?province=mazowieckie&county=Warszawa"
+```
+
+### Get Cities
+`GET /locations/cities`
+
+Query parameters:
+- `province` - Filter by province
+- `county` - Filter by county
+- `municipality` - Filter by municipality
+
+Examples:
+```bash
+curl "http://localhost:5001/locations/cities"
+curl "http://localhost:5001/locations/cities?province=mazowieckie&county=Warszawa"
 ```
 
 ### Health Check
