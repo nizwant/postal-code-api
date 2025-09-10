@@ -1,0 +1,27 @@
+[project]
+name = "postal-code-api"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "nizwant",email = "mateusznizwantowski@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110.0",
+    "flask>=3.0.0"
+]
+
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.group.dev.dependencies]
+matplotlib = "^3.8.0"
+ipykernel = "^6.25.0"
+jupyter = "^1.0.0"
+pandas = "^2.2.0"
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
