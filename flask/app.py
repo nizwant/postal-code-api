@@ -11,18 +11,8 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-@app.route('/postal-codes', methods=['GET'])
-def search_postal_codes():
-    # Get query parameters
-    city = request.args.get('city')
-    street = request.args.get('street')
-    house_number = request.args.get('house_number')
-    province = request.args.get('province')
-    county = request.args.get('county')
-    municipality = request.args.get('municipality')
-    limit = request.args.get('limit', default=100, type=int)
-    
-    # Build query
+def build_search_query(city=None, street=None, house_number=None, province=None, county=None, municipality=None, limit=100):
+    """Build a search query with the given parameters."""
     query = "SELECT * FROM postal_codes WHERE 1=1"
     params = []
     
@@ -53,43 +43,23 @@ def search_postal_codes():
     query += " LIMIT ?"
     params.append(limit)
     
-    # Execute query
+    return query, params
+
+def search_with_fallbacks(city, street, house_number, province, county, municipality, limit):
+    """Execute search with cascading fallbacks."""
     conn = get_db_connection()
+    
+    # Try main search
+    query, params = build_search_query(city, street, house_number, province, county, municipality, limit)
     results = conn.execute(query, params).fetchall()
     
-    # Cascading fallback logic
     fallback_used = False
     fallback_message = ""
     
     # Fallback 1: Remove house_number if present and no results
     if len(results) == 0 and house_number:
-        fallback_query = "SELECT * FROM postal_codes WHERE 1=1"
-        fallback_params = []
-        
-        if city:
-            fallback_query += " AND LOWER(city) LIKE LOWER(?)"
-            fallback_params.append(f"{city}%")
-        
-        if street:
-            fallback_query += " AND LOWER(street) = LOWER(?)"
-            fallback_params.append(street)
-        
-        if province:
-            fallback_query += " AND LOWER(province) = LOWER(?)"
-            fallback_params.append(province)
-        
-        if county:
-            fallback_query += " AND LOWER(county) = LOWER(?)"
-            fallback_params.append(county)
-        
-        if municipality:
-            fallback_query += " AND LOWER(municipality) = LOWER(?)"
-            fallback_params.append(municipality)
-        
-        fallback_query += " LIMIT ?"
-        fallback_params.append(limit)
-        
-        results = conn.execute(fallback_query, fallback_params).fetchall()
+        query, params = build_search_query(city, street, None, province, county, municipality, limit)
+        results = conn.execute(query, params).fetchall()
         if len(results) > 0:
             fallback_used = True
             location_desc = []
@@ -102,28 +72,8 @@ def search_postal_codes():
     
     # Fallback 2: Remove street if still no results and we have city + street
     if len(results) == 0 and city and street:
-        fallback_query = "SELECT * FROM postal_codes WHERE 1=1"
-        fallback_params = []
-        
-        fallback_query += " AND LOWER(city) LIKE LOWER(?)"
-        fallback_params.append(f"{city}%")
-        
-        if province:
-            fallback_query += " AND LOWER(province) = LOWER(?)"
-            fallback_params.append(province)
-        
-        if county:
-            fallback_query += " AND LOWER(county) = LOWER(?)"
-            fallback_params.append(county)
-        
-        if municipality:
-            fallback_query += " AND LOWER(municipality) = LOWER(?)"
-            fallback_params.append(municipality)
-        
-        fallback_query += " LIMIT ?"
-        fallback_params.append(limit)
-        
-        results = conn.execute(fallback_query, fallback_params).fetchall()
+        query, params = build_search_query(city, None, None, province, county, municipality, limit)
+        results = conn.execute(query, params).fetchall()
         if len(results) > 0:
             fallback_used = True
             if house_number:
@@ -132,6 +82,23 @@ def search_postal_codes():
                 fallback_message = f"Street '{street}' not found in {city}. Showing all results for {city}."
     
     conn.close()
+    return results, fallback_used, fallback_message
+
+@app.route('/postal-codes', methods=['GET'])
+def search_postal_codes():
+    # Get query parameters
+    city = request.args.get('city')
+    street = request.args.get('street')
+    house_number = request.args.get('house_number')
+    province = request.args.get('province')
+    county = request.args.get('county')
+    municipality = request.args.get('municipality')
+    limit = request.args.get('limit', default=100, type=int)
+    
+    # Execute search with fallbacks
+    results, fallback_used, fallback_message = search_with_fallbacks(
+        city, street, house_number, province, county, municipality, limit
+    )
     
     # Format results
     postal_codes = []
