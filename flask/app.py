@@ -56,6 +56,39 @@ def search_postal_codes():
     # Execute query
     conn = get_db_connection()
     results = conn.execute(query, params).fetchall()
+    
+    # If no results and we have both city and street, fallback to city-only search
+    fallback_used = False
+    if len(results) == 0 and city and street:
+        # Build fallback query without street
+        fallback_query = "SELECT * FROM postal_codes WHERE 1=1"
+        fallback_params = []
+        
+        fallback_query += " AND LOWER(city) = LOWER(?)"
+        fallback_params.append(city)
+        
+        if house_number:
+            fallback_query += " AND house_numbers = ?"
+            fallback_params.append(house_number)
+        
+        if province:
+            fallback_query += " AND LOWER(province) = LOWER(?)"
+            fallback_params.append(province)
+        
+        if county:
+            fallback_query += " AND LOWER(county) = LOWER(?)"
+            fallback_params.append(county)
+        
+        if municipality:
+            fallback_query += " AND LOWER(municipality) = LOWER(?)"
+            fallback_params.append(municipality)
+        
+        fallback_query += " LIMIT ?"
+        fallback_params.append(limit)
+        
+        results = conn.execute(fallback_query, fallback_params).fetchall()
+        fallback_used = len(results) > 0
+    
     conn.close()
     
     # Format results
@@ -71,10 +104,16 @@ def search_postal_codes():
             'province': row['province']
         })
     
-    return jsonify({
+    response = {
         'results': postal_codes,
         'count': len(postal_codes)
-    })
+    }
+    
+    if fallback_used:
+        response['message'] = f"Street '{street}' not found in {city}. Showing all results for {city}."
+        response['fallback_used'] = True
+    
+    return jsonify(response)
 
 @app.route('/postal-codes/<postal_code>', methods=['GET'])
 def get_postal_code(postal_code):
