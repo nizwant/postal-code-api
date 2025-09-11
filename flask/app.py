@@ -27,8 +27,8 @@ def search_postal_codes():
     params = []
     
     if city:
-        query += " AND LOWER(city) = LOWER(?)"
-        params.append(city)
+        query += " AND LOWER(city) LIKE LOWER(?)"
+        params.append(f"{city}%")
     
     if street:
         query += " AND LOWER(street) = LOWER(?)"
@@ -57,51 +57,18 @@ def search_postal_codes():
     conn = get_db_connection()
     results = conn.execute(query, params).fetchall()
     
-    # Fallback logic
+    # Cascading fallback logic
     fallback_used = False
     fallback_message = ""
     
-    # First fallback: if no results and we have both city and street, fallback to city-only search
-    if len(results) == 0 and city and street:
-        # Build fallback query without street
-        fallback_query = "SELECT * FROM postal_codes WHERE 1=1"
-        fallback_params = []
-        
-        fallback_query += " AND LOWER(city) = LOWER(?)"
-        fallback_params.append(city)
-        
-        if house_number:
-            fallback_query += " AND house_numbers = ?"
-            fallback_params.append(house_number)
-        
-        if province:
-            fallback_query += " AND LOWER(province) = LOWER(?)"
-            fallback_params.append(province)
-        
-        if county:
-            fallback_query += " AND LOWER(county) = LOWER(?)"
-            fallback_params.append(county)
-        
-        if municipality:
-            fallback_query += " AND LOWER(municipality) = LOWER(?)"
-            fallback_params.append(municipality)
-        
-        fallback_query += " LIMIT ?"
-        fallback_params.append(limit)
-        
-        results = conn.execute(fallback_query, fallback_params).fetchall()
-        if len(results) > 0:
-            fallback_used = True
-            fallback_message = f"Street '{street}' not found in {city}. Showing all results for {city}."
-    
-    # Second fallback: if no results and we have house_number, fallback to search without house_number
+    # Fallback 1: Remove house_number if present and no results
     if len(results) == 0 and house_number:
         fallback_query = "SELECT * FROM postal_codes WHERE 1=1"
         fallback_params = []
         
         if city:
-            fallback_query += " AND LOWER(city) = LOWER(?)"
-            fallback_params.append(city)
+            fallback_query += " AND LOWER(city) LIKE LOWER(?)"
+            fallback_params.append(f"{city}%")
         
         if street:
             fallback_query += " AND LOWER(street) = LOWER(?)"
@@ -132,6 +99,37 @@ def search_postal_codes():
                 location_desc.append(f"city '{city}'")
             location_str = " in " + " in ".join(location_desc) if location_desc else ""
             fallback_message = f"House number '{house_number}' not found{location_str}. Showing all results{location_str}."
+    
+    # Fallback 2: Remove street if still no results and we have city + street
+    if len(results) == 0 and city and street:
+        fallback_query = "SELECT * FROM postal_codes WHERE 1=1"
+        fallback_params = []
+        
+        fallback_query += " AND LOWER(city) LIKE LOWER(?)"
+        fallback_params.append(f"{city}%")
+        
+        if province:
+            fallback_query += " AND LOWER(province) = LOWER(?)"
+            fallback_params.append(province)
+        
+        if county:
+            fallback_query += " AND LOWER(county) = LOWER(?)"
+            fallback_params.append(county)
+        
+        if municipality:
+            fallback_query += " AND LOWER(municipality) = LOWER(?)"
+            fallback_params.append(municipality)
+        
+        fallback_query += " LIMIT ?"
+        fallback_params.append(limit)
+        
+        results = conn.execute(fallback_query, fallback_params).fetchall()
+        if len(results) > 0:
+            fallback_used = True
+            if house_number:
+                fallback_message = f"Street '{street}' with house number '{house_number}' not found in {city}. Showing all results for {city}."
+            else:
+                fallback_message = f"Street '{street}' not found in {city}. Showing all results for {city}."
     
     conn.close()
     
