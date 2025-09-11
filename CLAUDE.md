@@ -21,9 +21,12 @@ Each technology implementation is in its own directory:
 
 ### Flask Implementation Details
 - **Database**: SQLite with full indexing on searchable fields
-- **Search Strategy**: Exact matching, case-insensitive
+- **Search Strategy**: Partial city matching, exact street/other fields, case-insensitive
 - **API Pattern**: RESTful with hierarchical location endpoints
 - **Performance**: Optimized with database indexes for all query fields
+- **Fallback Logic**: Cascading search fallbacks (house_number → street → city-only)
+- **Production Server**: Gunicorn with multiple workers
+- **Code Architecture**: Refactored with reusable query builder functions
 
 ## Common Development Commands
 
@@ -44,12 +47,16 @@ cd flask
 # Create/recreate database from CSV
 python create_db.py
 
-# Run Flask server (localhost:5001)  
+# Development server (localhost:5001)  
 python app.py
+
+# Production server (recommended for testing)
+pip install gunicorn
+gunicorn --workers 4 --bind 0.0.0.0:5001 app:app
 
 # Test API
 curl "http://localhost:5001/health"
-curl "http://localhost:5001/postal-codes?city=Abramy"
+curl "http://localhost:5001/postal-codes?city=Warszawa&street=Jodłowa"
 curl "http://localhost:5001/locations/provinces"
 ```
 
@@ -68,18 +75,56 @@ All implementations should follow this pattern:
 - `GET /locations/cities?province=X&county=Y&municipality=Z` - Cities, optionally filtered
 
 ### Search Behavior Requirements
-- Exact matching only (no partial/fuzzy search)
-- Case-insensitive for text fields
-- house_number matches against exact "Numery" field values
-- Results limited by `limit` parameter (default 100)
+- **City matching**: Partial matching (e.g., "Warszawa" matches "Warszawa (Mokotów)")
+- **Other fields**: Exact matching, case-insensitive
+- **house_number**: Matches against exact "Numery" field values
+- **Fallback logic**: Cascading fallbacks when no results found:
+  1. Remove house_number parameter if present
+  2. Remove street parameter if still no results
+- **Results**: Limited by `limit` parameter (default 100)
+- **Polish characters**: Supported via URL encoding
+
+## Production Deployment Commands
+
+For fair performance comparison, each technology must use production-grade servers:
+
+### Flask (Port 5001)
+```bash
+cd flask
+pip install gunicorn
+gunicorn --workers 4 --bind 0.0.0.0:5001 app:app
+```
+
+### FastAPI (Port 5002)
+```bash
+cd fastapi
+pip install uvicorn[standard] gunicorn
+gunicorn app:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:5002
+```
+
+### Go (Port 5003)
+```bash
+cd go
+go build -o postal-api main.go
+./postal-api  # Built-in production server
+```
+
+### Elixir (Port 5004)
+```bash
+cd elixir
+MIX_ENV=prod mix deps.get
+MIX_ENV=prod mix phx.server  # Phoenix production server
+```
 
 ## Performance Considerations
 
 The goal is API performance comparison, so:
+- **Production servers required** - No development servers for benchmarking
 - Database choice should optimize for read performance
 - Indexing strategy is critical for query performance
 - Each implementation should handle ~117k records efficiently
 - Focus on response time and throughput metrics
+- Use separate machines for API server and load generator
 
 ## Data Mapping
 CSV columns → API fields:

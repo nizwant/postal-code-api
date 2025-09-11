@@ -12,8 +12,10 @@
 ### 2. Deploy Flask API to Ubuntu server
 - [ ] Transfer Flask code and CSV data to server
 - [ ] Install Python dependencies (Flask, pandas, sqlite3)
+- [ ] **Install Gunicorn for production server: `pip install gunicorn`**
 - [ ] Create database using `create_db.py`
-- [ ] Configure Flask to run on external interface (0.0.0.0)
+- [ ] **Configure Gunicorn with multiple workers for performance testing**
+- [ ] **Test Gunicorn deployment: `gunicorn --workers 4 --bind 0.0.0.0:5001 app:app`**
 - [ ] Test API accessibility from other machines
 - [ ] Set up process management (systemd service or similar)
 
@@ -43,14 +45,19 @@
 - [ ] Implement same database schema and indexing strategy
 - [ ] Create identical API endpoints to Flask version
 - [ ] Add FastAPI-specific optimizations (async, Pydantic models)
+- [ ] **Install production server: `pip install uvicorn[standard] gunicorn`**
+- [ ] **Configure production deployment: `gunicorn app:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:5002`**
 - [ ] Test API compatibility with existing test suite
 
 ### 7. Implement Go version of postal code API
 - [ ] Create `go/` directory with proper module structure
 - [ ] Choose Go database library (database/sql + sqlite3 driver)
-- [ ] Implement HTTP router and handlers
+- [ ] Implement HTTP router and handlers (Gin or Gorilla Mux)
 - [ ] Create identical API endpoints and JSON responses
 - [ ] Add Go-specific optimizations (goroutines, connection pooling)
+- [ ] **Build production binary: `go build -o postal-api main.go`**
+- [ ] **Configure production deployment: `./postal-api` (runs on port 5003)**
+- [ ] **Note: Go's built-in HTTP server is production-ready (no external server needed)**
 
 ### 8. Implement Elixir version of postal code API
 - [ ] Create `elixir/` directory with Mix project
@@ -58,6 +65,10 @@
 - [ ] Configure Ecto for database access
 - [ ] Implement matching API endpoints
 - [ ] Add Elixir-specific optimizations (OTP, concurrency)
+- [ ] **Configure production settings in `config/prod.exs`**
+- [ ] **Build production release: `MIX_ENV=prod mix release`**
+- [ ] **Configure production deployment: `MIX_ENV=prod mix phx.server` (runs on port 5004)**
+- [ ] **Note: Phoenix includes production-ready server (no external server needed)**
 
 ## Testing & Analysis
 
@@ -69,6 +80,11 @@
 - [ ] Document baseline metrics and system behavior
 
 ### 10. Compare performance across all API implementations
+- [ ] **Ensure all APIs are running with production servers:**
+  - [ ] Flask: `gunicorn --workers 4 --bind 0.0.0.0:5001 app:app`
+  - [ ] FastAPI: `gunicorn app:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:5002`
+  - [ ] Go: `./postal-api` (port 5003)
+  - [ ] Elixir: `MIX_ENV=prod mix phx.server` (port 5004)
 - [ ] Run identical test suite against all implementations
 - [ ] Collect comprehensive metrics (response time percentiles, throughput)
 - [ ] Monitor resource usage during tests
