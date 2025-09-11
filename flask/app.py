@@ -57,8 +57,11 @@ def search_postal_codes():
     conn = get_db_connection()
     results = conn.execute(query, params).fetchall()
     
-    # If no results and we have both city and street, fallback to city-only search
+    # Fallback logic
     fallback_used = False
+    fallback_message = ""
+    
+    # First fallback: if no results and we have both city and street, fallback to city-only search
     if len(results) == 0 and city and street:
         # Build fallback query without street
         fallback_query = "SELECT * FROM postal_codes WHERE 1=1"
@@ -87,7 +90,48 @@ def search_postal_codes():
         fallback_params.append(limit)
         
         results = conn.execute(fallback_query, fallback_params).fetchall()
-        fallback_used = len(results) > 0
+        if len(results) > 0:
+            fallback_used = True
+            fallback_message = f"Street '{street}' not found in {city}. Showing all results for {city}."
+    
+    # Second fallback: if no results and we have house_number, fallback to search without house_number
+    if len(results) == 0 and house_number:
+        fallback_query = "SELECT * FROM postal_codes WHERE 1=1"
+        fallback_params = []
+        
+        if city:
+            fallback_query += " AND LOWER(city) = LOWER(?)"
+            fallback_params.append(city)
+        
+        if street:
+            fallback_query += " AND LOWER(street) = LOWER(?)"
+            fallback_params.append(street)
+        
+        if province:
+            fallback_query += " AND LOWER(province) = LOWER(?)"
+            fallback_params.append(province)
+        
+        if county:
+            fallback_query += " AND LOWER(county) = LOWER(?)"
+            fallback_params.append(county)
+        
+        if municipality:
+            fallback_query += " AND LOWER(municipality) = LOWER(?)"
+            fallback_params.append(municipality)
+        
+        fallback_query += " LIMIT ?"
+        fallback_params.append(limit)
+        
+        results = conn.execute(fallback_query, fallback_params).fetchall()
+        if len(results) > 0:
+            fallback_used = True
+            location_desc = []
+            if street:
+                location_desc.append(f"street '{street}'")
+            if city:
+                location_desc.append(f"city '{city}'")
+            location_str = " in " + " in ".join(location_desc) if location_desc else ""
+            fallback_message = f"House number '{house_number}' not found{location_str}. Showing all results{location_str}."
     
     conn.close()
     
@@ -110,7 +154,7 @@ def search_postal_codes():
     }
     
     if fallback_used:
-        response['message'] = f"Street '{street}' not found in {city}. Showing all results for {city}."
+        response['message'] = fallback_message
         response['fallback_used'] = True
     
     return jsonify(response)
