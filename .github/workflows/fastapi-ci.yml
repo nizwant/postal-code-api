@@ -99,7 +99,7 @@ jobs:
         kill $APP_PID
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       with:
         file: fastapi/coverage.xml
         flags: fastapi
