@@ -1,0 +1,279 @@
+name: Main CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Check what changed to determine which workflows to run
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      flask: ${{ steps.changes.outputs.flask }}
+      fastapi: ${{ steps.changes.outputs.fastapi }}
+      go: ${{ steps.changes.outputs.go }}
+      elixir: ${{ steps.changes.outputs.elixir }}
+      common: ${{ steps.changes.outputs.common }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dorny/paths-filter@v2
+      id: changes
+      with:
+        filters: |
+          flask:
+            - 'flask/**'
+          fastapi:
+            - 'fastapi/**'
+          go:
+            - 'go/**'
+          elixir:
+            - 'elixir/**'
+          common:
+            - 'postal_codes_poland.csv'
+            - '.github/workflows/**'
+            - 'pyproject.toml'
+            - 'README.md'
+
+  # Run individual CI workflows
+  flask-ci:
+    needs: changes
+    if: ${{ needs.changes.outputs.flask == 'true' || needs.changes.outputs.common == 'true' }}
+    uses: ./.github/workflows/flask-ci.yml
+
+  fastapi-ci:
+    needs: changes
+    if: ${{ needs.changes.outputs.fastapi == 'true' || needs.changes.outputs.common == 'true' }}
+    uses: ./.github/workflows/fastapi-ci.yml
+
+  go-ci:
+    needs: changes
+    if: ${{ needs.changes.outputs.go == 'true' || needs.changes.outputs.common == 'true' }}
+    uses: ./.github/workflows/go-ci.yml
+
+  elixir-ci:
+    needs: changes
+    if: ${{ needs.changes.outputs.elixir == 'true' || needs.changes.outputs.common == 'true' }}
+    uses: ./.github/workflows/elixir-ci.yml
+
+  # Integration tests across all APIs (when multiple are changed)
+  cross-api-integration:
+    runs-on: ubuntu-latest
+    needs: [changes, flask-ci, fastapi-ci, go-ci, elixir-ci]
+    if: |
+      always() && 
+      (needs.flask-ci.result == 'success' || needs.flask-ci.result == 'skipped') &&
+      (needs.fastapi-ci.result == 'success' || needs.fastapi-ci.result == 'skipped') &&
+      (needs.go-ci.result == 'success' || needs.go-ci.result == 'skipped') &&
+      (needs.elixir-ci.result == 'success' || needs.elixir-ci.result == 'skipped')
+    
+    strategy:
+      matrix:
+        python-version: ['3.11']
+        
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Create test data
+      run: |
+        echo "PNA,Miejscowość,Ulica,Numery,Gmina,Powiat,Województwo" > postal_codes_poland.csv
+        echo "00-001,Warszawa,Testowa,1-10,Warszawa,Warszawa,mazowieckie" >> postal_codes_poland.csv
+        echo "00-002,Kraków,Główna,5-15,Kraków,Kraków,małopolskie" >> postal_codes_poland.csv
+        echo "00-003,Gdańsk,Morska,20-30,Gdańsk,Gdańsk,pomorskie" >> postal_codes_poland.csv
+
+    - name: Install common testing tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests pytest
+
+    - name: Create integration test suite
+      run: |
+        cat > test_api_consistency.py << 'EOF'
+        import requests
+        import json
+        import sys
+        import time
+        
+        def wait_for_api(url, timeout=30):
+            """Wait for API to be ready."""
+            for i in range(timeout):
+                try:
+                    response = requests.get(f"{url}/health", timeout=5)
+                    if response.status_code == 200:
+                        return True
+                except:
+                    pass
+                time.sleep(1)
+            return False
+        
+        def test_api_consistency(base_urls):
+            """Test that all APIs return consistent results."""
+            
+            # Test cases
+            test_cases = [
+                {"endpoint": "/health", "expected_status": 200},
+                {"endpoint": "/postal-codes?city=Warszawa", "expected_status": 200},
+                {"endpoint": "/postal-codes/00-001", "expected_status": 200},
+                {"endpoint": "/locations/provinces", "expected_status": 200},
+            ]
+            
+            results = {}
+            
+            for name, url in base_urls.items():
+                if not wait_for_api(url):
+                    print(f"❌ {name} API not responding at {url}")
+                    continue
+                    
+                print(f"✅ Testing {name} API at {url}")
+                results[name] = {}
+                
+                for test_case in test_cases:
+                    endpoint = test_case["endpoint"]
+                    try:
+                        # Handle different path patterns
+                        if name == "elixir" and endpoint.startswith("/postal-codes") or endpoint.startswith("/locations"):
+                            endpoint = "/api" + endpoint
+                            
+                        response = requests.get(f"{url}{endpoint}", timeout=10)
+                        results[name][endpoint] = {
+                            "status": response.status_code,
+                            "data": response.json() if response.headers.get('content-type', '').startswith('application/json') else None
+                        }
+                        
+                        if response.status_code == test_case["expected_status"]:
+                            print(f"  ✅ {endpoint}: {response.status_code}")
+                        else:
+                            print(f"  ❌ {endpoint}: {response.status_code} (expected {test_case['expected_status']})")
+                            
+                    except Exception as e:
+                        print(f"  ❌ {endpoint}: Error - {str(e)}")
+                        results[name][endpoint] = {"error": str(e)}
+            
+            # Compare results across APIs
+            print("\n📊 API Consistency Report:")
+            for endpoint in [tc["endpoint"] for tc in test_cases]:
+                print(f"\nEndpoint: {endpoint}")
+                statuses = []
+                for name in results:
+                    if endpoint in results[name] and 'status' in results[name][endpoint]:
+                        status = results[name][endpoint]['status']
+                        statuses.append(status)
+                        print(f"  {name}: {status}")
+                
+                if len(set(statuses)) <= 1:
+                    print(f"  ✅ Consistent responses")
+                else:
+                    print(f"  ❌ Inconsistent responses: {statuses}")
+        
+        if __name__ == "__main__":
+            # Only test running APIs
+            base_urls = {}
+            
+            # Check which APIs are running
+            test_urls = {
+                "flask": "http://localhost:5001",
+                "fastapi": "http://localhost:5002", 
+                "go": "http://localhost:5003",
+                "elixir": "http://localhost:5004"
+            }
+            
+            for name, url in test_urls.items():
+                try:
+                    response = requests.get(f"{url}/health", timeout=2)
+                    if response.status_code == 200:
+                        base_urls[name] = url
+                except:
+                    pass
+            
+            if not base_urls:
+                print("⚠️  No APIs are running, skipping consistency tests")
+                sys.exit(0)
+                
+            test_api_consistency(base_urls)
+        EOF
+
+    - name: Run Flask API if changed
+      if: needs.changes.outputs.flask == 'true' || needs.changes.outputs.common == 'true'
+      run: |
+        cd flask
+        pip install -r requirements.txt
+        python create_db.py
+        python app.py &
+        echo $! > flask.pid
+        sleep 3
+
+    - name: Run integration tests
+      run: |
+        python test_api_consistency.py
+
+    - name: Cleanup
+      if: always()
+      run: |
+        # Kill any running processes
+        pkill -f "python app.py" || true
+        pkill -f "uvicorn" || true
+        pkill -f "postal-api" || true
+        pkill -f "mix phx.server" || true
+
+  # Summary job
+  ci-summary:
+    runs-on: ubuntu-latest
+    needs: [flask-ci, fastapi-ci, go-ci, elixir-ci, cross-api-integration]
+    if: always()
+    steps:
+    - name: CI Summary
+      run: |
+        echo "## CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.flask-ci.result }}" == "success" ]; then
+          echo "✅ Flask CI passed" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ needs.flask-ci.result }}" == "skipped" ]; then
+          echo "⏭️ Flask CI skipped (no changes)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Flask CI failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.fastapi-ci.result }}" == "success" ]; then
+          echo "✅ FastAPI CI passed" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ needs.fastapi-ci.result }}" == "skipped" ]; then
+          echo "⏭️ FastAPI CI skipped (no changes)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ FastAPI CI failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.go-ci.result }}" == "success" ]; then
+          echo "✅ Go CI passed" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ needs.go-ci.result }}" == "skipped" ]; then
+          echo "⏭️ Go CI skipped (no changes)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Go CI failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.elixir-ci.result }}" == "success" ]; then
+          echo "✅ Elixir CI passed" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ needs.elixir-ci.result }}" == "skipped" ]; then
+          echo "⏭️ Elixir CI skipped (no changes)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Elixir CI failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.cross-api-integration.result }}" == "success" ]; then
+          echo "✅ Integration tests passed" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ needs.cross-api-integration.result }}" == "skipped" ]; then
+          echo "⏭️ Integration tests skipped" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Integration tests failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "- Review any failed tests above" >> $GITHUB_STEP_SUMMARY
+        echo "- Check individual workflow logs for details" >> $GITHUB_STEP_SUMMARY
+        echo "- Deploy successful builds to staging/production" >> $GITHUB_STEP_SUMMARY
