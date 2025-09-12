@@ -177,7 +177,7 @@ jobs:
         cp -r . ../artifacts/flask/
         
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: flask-app
         path: artifacts/flask/
