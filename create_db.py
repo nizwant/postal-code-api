@@ -9,6 +9,7 @@ import pandas as pd
 import os
 import re
 
+
 def split_house_number_ranges(house_numbers_str):
     """
     Split comma-separated house number ranges into individual range parts.
@@ -23,12 +24,13 @@ def split_house_number_ranges(house_numbers_str):
         return []
 
     # Split by comma and clean up whitespace
-    parts = [part.strip() for part in house_numbers_str.split(',')]
+    parts = [part.strip() for part in house_numbers_str.split(",")]
 
     # Filter out empty parts
     parts = [part for part in parts if part]
 
     return parts
+
 
 def validate_split_pattern(pattern):
     """
@@ -46,21 +48,21 @@ def validate_split_pattern(pattern):
 
     # Check for basic valid patterns based on our analysis:
     valid_patterns = [
-        r'^\d+$',                           # Individual number: "60"
-        r'^\d+[a-z]?$',                     # Individual with letter: "35c"
-        r'^\d+-\d+$',                       # Simple range: "1-12"
-        r'^\d+-\d+\([np]\)$',              # Side indicator: "1-41(n)"
-        r'^\d+-DK$',                        # DK range: "337-DK"
-        r'^\d+-DK\([np]\)$',               # DK with side: "2-DK(p)"
-        r'^\d+[a-z]?-\d+[a-z]?$',          # Letter suffix: "4a-9b"
-        r'^\d+[a-z]?-\d+[a-z]?\([np]\)$',  # Letter with side: "87a-89(n)"
-        r'^\d+/\d+$',                       # Slash notation: "2/4"
-        r'^\d+-\d+/\d+$',                   # Slash range: "55-69/71"
-        r'^\d+-\d+/\d+\([np]\)$',          # Slash with side: "55-69/71(n)"
-        r'^\d+/\d+-\d+$',                   # Slash start: "2/4-10"
-        r'^\d+/\d+-\d+\([np]\)$',          # Slash start with side: "2/4-10(p)"
-        r'^\d+[a-z]?-\d+[a-z]?/\d+[a-z]?$', # Complex letter/slash: "4a-9/11"
-        r'^\d+-\d+-\d+$',                   # Triple range (edge case): "38-40-42"
+        r"^\d+$",  # Individual number: "60"
+        r"^\d+[a-z]?$",  # Individual with letter: "35c"
+        r"^\d+-\d+$",  # Simple range: "1-12"
+        r"^\d+-\d+\([np]\)$",  # Side indicator: "1-41(n)"
+        r"^\d+-DK$",  # DK range: "337-DK"
+        r"^\d+-DK\([np]\)$",  # DK with side: "2-DK(p)"
+        r"^\d+[a-z]?-\d+[a-z]?$",  # Letter suffix: "4a-9b"
+        r"^\d+[a-z]?-\d+[a-z]?\([np]\)$",  # Letter with side: "87a-89(n)"
+        r"^\d+/\d+$",  # Slash notation: "2/4"
+        r"^\d+-\d+/\d+$",  # Slash range: "55-69/71"
+        r"^\d+-\d+/\d+\([np]\)$",  # Slash with side: "55-69/71(n)"
+        r"^\d+/\d+-\d+$",  # Slash start: "2/4-10"
+        r"^\d+/\d+-\d+\([np]\)$",  # Slash start with side: "2/4-10(p)"
+        r"^\d+[a-z]?-\d+[a-z]?/\d+[a-z]?$",  # Complex letter/slash: "4a-9/11"
+        r"^\d+-\d+-\d+$",  # Triple range (edge case): "38-40-42"
     ]
 
     for pattern_regex in valid_patterns:
@@ -71,18 +73,19 @@ def validate_split_pattern(pattern):
     print(f"Warning: Suspicious pattern detected: '{pattern}'")
     return True  # Accept it anyway, but warn
 
+
 def create_normalized_database():
     """Create the normalized postal codes database."""
 
     # Read CSV file
-    csv_path = '../postal_codes_poland.csv'
+    csv_path = "postal_codes_poland.csv"
     print(f"Reading CSV file: {csv_path}")
     df = pd.read_csv(csv_path)
 
     print(f"Original records: {len(df)}")
 
     # Create SQLite database
-    db_path = 'postal_codes_normalized.db'
+    db_path = "postal_codes_normalized.db"
 
     # Remove existing database if it exists
     if os.path.exists(db_path):
@@ -93,7 +96,8 @@ def create_normalized_database():
     cursor = conn.cursor()
 
     # Create table with same structure as original
-    cursor.execute('''
+    cursor.execute(
+        """
         CREATE TABLE postal_codes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             postal_code TEXT NOT NULL,
@@ -104,16 +108,29 @@ def create_normalized_database():
             county TEXT,
             province TEXT
         )
-    ''')
+    """
+    )
 
     # Create indexes for better performance
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_postal_code ON postal_codes(postal_code)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_city ON postal_codes(LOWER(city))')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_street ON postal_codes(LOWER(street))')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_province ON postal_codes(LOWER(province))')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_county ON postal_codes(LOWER(county))')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_municipality ON postal_codes(LOWER(municipality))')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_house_numbers ON postal_codes(house_numbers)')
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_postal_code ON postal_codes(postal_code)"
+    )
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_city ON postal_codes(LOWER(city))")
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_street ON postal_codes(LOWER(street))"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_province ON postal_codes(LOWER(province))"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_county ON postal_codes(LOWER(county))"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_municipality ON postal_codes(LOWER(municipality))"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_house_numbers ON postal_codes(house_numbers)"
+    )
 
     # Counters for tracking
     original_with_house_numbers = 0
@@ -126,32 +143,35 @@ def create_normalized_database():
     # Process each record
     for _, row in df.iterrows():
         base_record = {
-            'postal_code': row['PNA'],
-            'city': row['Miejscowość'],
-            'street': row['Ulica'] if pd.notna(row['Ulica']) else None,
-            'municipality': row['Gmina'],
-            'county': row['Powiat'],
-            'province': row['Województwo']
+            "postal_code": row["PNA"],
+            "city": row["Miejscowość"],
+            "street": row["Ulica"] if pd.notna(row["Ulica"]) else None,
+            "municipality": row["Gmina"],
+            "county": row["Powiat"],
+            "province": row["Województwo"],
         }
 
         # Handle house numbers
-        house_numbers = row['Numery'] if pd.notna(row['Numery']) else None
+        house_numbers = row["Numery"] if pd.notna(row["Numery"]) else None
 
         if not house_numbers:
             # No house numbers - insert as single record with NULL house_numbers
-            cursor.execute('''
+            cursor.execute(
+                """
                 INSERT INTO postal_codes
                 (postal_code, city, street, house_numbers, municipality, county, province)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                base_record['postal_code'],
-                base_record['city'],
-                base_record['street'],
-                None,  # house_numbers = NULL
-                base_record['municipality'],
-                base_record['county'],
-                base_record['province']
-            ))
+            """,
+                (
+                    base_record["postal_code"],
+                    base_record["city"],
+                    base_record["street"],
+                    None,  # house_numbers = NULL
+                    base_record["municipality"],
+                    base_record["county"],
+                    base_record["province"],
+                ),
+            )
             records_without_house_numbers += 1
             total_normalized_records += 1
         else:
@@ -168,19 +188,22 @@ def create_normalized_database():
             # Create a record for each house number part
             for part in house_number_parts:
                 if validate_split_pattern(part):
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                         INSERT INTO postal_codes
                         (postal_code, city, street, house_numbers, municipality, county, province)
                         VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ''', (
-                        base_record['postal_code'],
-                        base_record['city'],
-                        base_record['street'],
-                        part,  # Individual house number range
-                        base_record['municipality'],
-                        base_record['county'],
-                        base_record['province']
-                    ))
+                    """,
+                        (
+                            base_record["postal_code"],
+                            base_record["city"],
+                            base_record["street"],
+                            part,  # Individual house number range
+                            base_record["municipality"],
+                            base_record["county"],
+                            base_record["province"],
+                        ),
+                    )
                     total_normalized_records += 1
                 else:
                     suspicious_patterns.append(part)
@@ -190,14 +213,16 @@ def create_normalized_database():
 
     # Get final statistics
     final_count = cursor.execute("SELECT COUNT(*) FROM postal_codes").fetchone()[0]
-    house_number_count = cursor.execute("SELECT COUNT(*) FROM postal_codes WHERE house_numbers IS NOT NULL").fetchone()[0]
+    house_number_count = cursor.execute(
+        "SELECT COUNT(*) FROM postal_codes WHERE house_numbers IS NOT NULL"
+    ).fetchone()[0]
 
     conn.close()
 
     # Print summary
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("NORMALIZATION COMPLETE")
-    print("="*60)
+    print("=" * 60)
     print(f"Original total records:           {len(df):,}")
     print(f"Original with house numbers:      {original_with_house_numbers:,}")
     print(f"Original without house numbers:   {records_without_house_numbers:,}")
@@ -220,11 +245,12 @@ def create_normalized_database():
 
     return db_path
 
+
 def verify_normalization(db_path):
     """Quick verification of the normalization process."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("VERIFICATION")
-    print("="*60)
+    print("=" * 60)
 
     conn = sqlite3.connect(db_path)
 
@@ -244,13 +270,15 @@ def verify_normalization(db_path):
         print("✓ No comma-separated house numbers remain")
 
     # Sample some records for manual verification
-    sample_records = conn.execute("""
+    sample_records = conn.execute(
+        """
         SELECT postal_code, city, street, house_numbers
         FROM postal_codes
         WHERE house_numbers IS NOT NULL
         ORDER BY RANDOM()
         LIMIT 10
-    """).fetchall()
+    """
+    ).fetchall()
 
     print(f"\nSample normalized records:")
     for record in sample_records:
@@ -260,7 +288,8 @@ def verify_normalization(db_path):
 
     conn.close()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     print("Creating normalized postal codes database...")
     db_path = create_normalized_database()
     verify_normalization(db_path)

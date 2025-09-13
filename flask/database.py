@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-DB_PATH = 'postal_codes.db'
+DB_PATH = '../postal_codes.db'
 
 def get_db_connection():
     """Get a database connection with row factory configured."""

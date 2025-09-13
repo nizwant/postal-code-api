@@ -15,9 +15,14 @@ This is a multi-technology API performance comparison project for Polish postal 
 ### Implementation Structure
 Each technology implementation is in its own directory:
 - `flask/` - Flask + SQLite implementation (currently complete)
-- `fastapi/` - FastAPI implementation (placeholder)  
+- `fastapi/` - FastAPI implementation (placeholder)
 - `elixir/` - Elixir implementation (placeholder)
 - `go/` - Go implementation (placeholder)
+
+### Shared Database
+- **Database**: `postal_codes.db` (25MB, 122k normalized records) in project root
+- **Creation Script**: `create_db.py` in project root - run once for all implementations
+- **CSV Source**: `postal_codes_poland.csv` (7.5MB original data) in project root
 
 ### Flask Implementation Details
 - **Database**: **Normalized SQLite** - comma-separated house number ranges split into individual records
@@ -40,8 +45,8 @@ Each technology implementation is in its own directory:
 - **Code Architecture**: Modular design with separated concerns:
   - `app.py` - Flask API endpoints and search orchestration
   - `house_number_matcher.py` - Dedicated pattern matching engine
-  - `create_db.py` - Database normalization and creation
-  - `test_house_number_matching.py` - Comprehensive test suite
+  - `../create_db.py` - Database normalization and creation (project root)
+  - `tests/` - Comprehensive test suite with API and unit tests
 
 ## Common Development Commands
 
@@ -57,10 +62,11 @@ pip install -r requirements.txt
 
 ### Flask Development
 ```bash
-cd flask
-
-# Create/recreate normalized database from CSV
+# Create/recreate normalized database from CSV (run once from project root)
 python create_db.py
+
+# Then start Flask development
+cd flask
 
 # Development server (localhost:5001)
 python app.py
@@ -81,7 +87,7 @@ curl "http://localhost:5001/postal-codes?city=Warszawa&street=Edwarda%20Józefa%
 # Returns: 02-659 (matches range "2-16a(p)" for even numbers)
 
 # Run comprehensive test suite
-python test_house_number_matching.py
+python run_tests.py
 ```
 
 ## API Design Patterns
