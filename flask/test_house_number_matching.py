@@ -281,68 +281,13 @@ class TestHouseNumberMatching(unittest.TestCase):
 
     def _is_house_number_in_range(self, house_number: str, range_string: str) -> bool:
         """
-        Test implementation using the normalized database.
+        Placeholder function for the actual implementation.
         
-        This queries the actual normalized database to test range matching.
+        This should be replaced with the real implementation once it's created.
+        For now, returns False for all cases to ensure tests fail until implementation is done.
         """
-        import sqlite3
-        import os
-        
-        db_path = 'postal_codes_normalized.db'
-        if not os.path.exists(db_path):
-            return False
-        
-        try:
-            house_num_int = int(house_number)
-            is_even = house_num_int % 2 == 0
-            
-            with sqlite3.connect(db_path) as conn:
-                cursor = conn.cursor()
-                
-                # Find ranges that match the target_range text
-                cursor.execute("""
-                    SELECT start_number, end_number, is_odd, is_even, range_type
-                    FROM house_ranges 
-                    WHERE original_range_text = ?
-                """, (range_string,))
-                
-                results = cursor.fetchall()
-                
-                for start_number, end_number, is_odd, is_even, range_type in results:
-                    # Check if house number falls within range
-                    if start_number is not None and house_num_int < start_number:
-                        continue
-                    
-                    if end_number is not None and house_num_int > end_number:
-                        continue
-                    
-                    # Check odd/even restrictions
-                    if is_odd and not is_even:  # Odd only
-                        if house_num_int % 2 == 0:  # House number is even
-                            continue
-                    elif is_even and not is_odd:  # Even only  
-                        if house_num_int % 2 == 1:  # House number is odd
-                            continue
-                    
-                    # If we get here, it matches
-                    return True
-                
-                return False
-                
-        except ValueError:
-            # Handle non-numeric house numbers (4a, etc.)
-            with sqlite3.connect(db_path) as conn:
-                cursor = conn.cursor()
-                
-                cursor.execute("""
-                    SELECT COUNT(*) FROM house_ranges 
-                    WHERE original_range_text = ? 
-                      AND (original_range_text LIKE ? OR special_cases LIKE ?)
-                """, (range_string, f"%{house_number}%", f"%{house_number}%"))
-                
-                return cursor.fetchone()[0] > 0
-        except Exception:
-            return False
+        # TODO: Replace with actual implementation
+        return False
 
     def get_test_pattern_summary(self) -> List[Tuple[str, str]]:
         """
