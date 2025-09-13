@@ -25,13 +25,14 @@ from urllib3.exceptions import InsecureRequestWarning
 # Suppress SSL warnings for localhost testing
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+
 class TestRunner:
     def __init__(self):
         self.server_url = "http://localhost:5001"
         self.results = {
-            'unit_tests': {'passed': 0, 'failed': 0, 'total': 0},
-            'api_tests': {'passed': 0, 'failed': 0, 'total': 0},
-            'overall': {'passed': 0, 'failed': 0, 'total': 0}
+            "unit_tests": {"passed": 0, "failed": 0, "total": 0},
+            "api_tests": {"passed": 0, "failed": 0, "total": 0},
+            "overall": {"passed": 0, "failed": 0, "total": 0},
         }
 
     def check_server_running(self) -> bool:
@@ -50,10 +51,17 @@ class TestRunner:
 
         # Run house number matching tests
         print("\n📋 Running house number matching tests...")
-        result1 = subprocess.run([
-            sys.executable, "-m", "unittest",
-            "tests.unit.test_house_number_matching", "-v"
-        ], capture_output=True, text=True)
+        result1 = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "unittest",
+                "tests.unit.test_house_number_matching",
+                "-v",
+            ],
+            capture_output=True,
+            text=True,
+        )
 
         print(result1.stdout)
         if result1.stderr:
@@ -61,10 +69,11 @@ class TestRunner:
 
         # Run postal service tests
         print("\n📋 Running postal service tests...")
-        result2 = subprocess.run([
-            sys.executable, "-m", "unittest",
-            "tests.unit.test_postal_service", "-v"
-        ], capture_output=True, text=True)
+        result2 = subprocess.run(
+            [sys.executable, "-m", "unittest", "tests.unit.test_postal_service", "-v"],
+            capture_output=True,
+            text=True,
+        )
 
         print(result2.stdout)
         if result2.stderr:
@@ -76,17 +85,17 @@ class TestRunner:
         # Count tests from output
         output = result1.stdout + result2.stdout
         if "Ran" in output:
-            for line in output.split('\n'):
-                if line.startswith('Ran '):
+            for line in output.split("\n"):
+                if line.startswith("Ran "):
                     parts = line.split()
                     if len(parts) >= 2:
                         try:
                             test_count = int(parts[1])
-                            self.results['unit_tests']['total'] += test_count
+                            self.results["unit_tests"]["total"] += test_count
                             if unit_success:
-                                self.results['unit_tests']['passed'] += test_count
+                                self.results["unit_tests"]["passed"] += test_count
                             else:
-                                self.results['unit_tests']['failed'] += test_count
+                                self.results["unit_tests"]["failed"] += test_count
                         except ValueError:
                             pass
 
@@ -109,9 +118,11 @@ class TestRunner:
         print(f"✅ Server is running at {self.server_url}")
 
         # Run API tests
-        result = subprocess.run([
-            sys.executable, "tests/api/test_endpoints.py"
-        ], capture_output=True, text=True)
+        result = subprocess.run(
+            [sys.executable, "tests/api/test_endpoints.py"],
+            capture_output=True,
+            text=True,
+        )
 
         print(result.stdout)
         if result.stderr:
@@ -121,20 +132,26 @@ class TestRunner:
         api_success = result.returncode == 0
 
         # Try to parse the results from the custom API test output
-        output_lines = result.stdout.split('\n')
+        output_lines = result.stdout.split("\n")
         for line in output_lines:
-            if 'RESULTS:' in line:
+            if "RESULTS:" in line:
                 # Parse "RESULTS: X passed, Y failed"
                 parts = line.split()
                 for i, part in enumerate(parts):
                     if part.isdigit():
-                        if i > 0 and parts[i-1] in ['RESULTS:', 'passed,']:
-                            if 'passed' in parts[i+1] if i+1 < len(parts) else '':
-                                self.results['api_tests']['passed'] = int(part)
-                        elif i > 0 and 'failed' in parts[i+1] if i+1 < len(parts) else '':
-                            self.results['api_tests']['failed'] = int(part)
+                        if i > 0 and parts[i - 1] in ["RESULTS:", "passed,"]:
+                            if "passed" in parts[i + 1] if i + 1 < len(parts) else "":
+                                self.results["api_tests"]["passed"] = int(part)
+                        elif (
+                            i > 0 and "failed" in parts[i + 1]
+                            if i + 1 < len(parts)
+                            else ""
+                        ):
+                            self.results["api_tests"]["failed"] = int(part)
 
-        self.results['api_tests']['total'] = self.results['api_tests']['passed'] + self.results['api_tests']['failed']
+        self.results["api_tests"]["total"] = (
+            self.results["api_tests"]["passed"] + self.results["api_tests"]["failed"]
+        )
 
         print(f"\n📊 API tests result: {'✅ PASSED' if api_success else '❌ FAILED'}")
         return api_success
@@ -142,17 +159,14 @@ class TestRunner:
     def print_summary(self, unit_success: bool, api_success: bool):
         """Print overall test summary."""
         # Calculate totals
-        self.results['overall']['passed'] = (
-            self.results['unit_tests']['passed'] +
-            self.results['api_tests']['passed']
+        self.results["overall"]["passed"] = (
+            self.results["unit_tests"]["passed"] + self.results["api_tests"]["passed"]
         )
-        self.results['overall']['failed'] = (
-            self.results['unit_tests']['failed'] +
-            self.results['api_tests']['failed']
+        self.results["overall"]["failed"] = (
+            self.results["unit_tests"]["failed"] + self.results["api_tests"]["failed"]
         )
-        self.results['overall']['total'] = (
-            self.results['overall']['passed'] +
-            self.results['overall']['failed']
+        self.results["overall"]["total"] = (
+            self.results["overall"]["passed"] + self.results["overall"]["failed"]
         )
 
         print("\n" + "=" * 60)
@@ -175,7 +189,7 @@ class TestRunner:
 
         # Overall summary
         overall_success = unit_success and api_success
-        total_tests = self.results['overall']['total']
+        total_tests = self.results["overall"]["total"]
 
         print(f"\n🎯 Overall Results:")
         print(f"   Total Passed: {self.results['overall']['passed']}")
@@ -183,10 +197,12 @@ class TestRunner:
         print(f"   Total Tests:  {total_tests}")
 
         if total_tests > 0:
-            success_rate = (self.results['overall']['passed'] / total_tests) * 100
+            success_rate = (self.results["overall"]["passed"] / total_tests) * 100
             print(f"   Success Rate: {success_rate:.1f}%")
 
-        print(f"   Overall Status: {'✅ ALL TESTS PASSED' if overall_success else '❌ SOME TESTS FAILED'}")
+        print(
+            f"   Overall Status: {'✅ ALL TESTS PASSED' if overall_success else '❌ SOME TESTS FAILED'}"
+        )
         print("=" * 60)
 
         return overall_success
@@ -213,12 +229,15 @@ class TestRunner:
 
 def main():
     parser = argparse.ArgumentParser(description="Run Postal Code API tests")
-    parser.add_argument("--unit-only", action="store_true",
-                       help="Run only unit tests")
-    parser.add_argument("--api-only", action="store_true",
-                       help="Run only API integration tests")
-    parser.add_argument("--check-server", action="store_true",
-                       help="Check if server is running and exit")
+    parser.add_argument("--unit-only", action="store_true", help="Run only unit tests")
+    parser.add_argument(
+        "--api-only", action="store_true", help="Run only API integration tests"
+    )
+    parser.add_argument(
+        "--check-server",
+        action="store_true",
+        help="Check if server is running and exit",
+    )
 
     args = parser.parse_args()
 
@@ -232,10 +251,7 @@ def main():
             print(f"❌ Server is not running at {runner.server_url}")
             sys.exit(1)
 
-    success = runner.run_all_tests(
-        unit_only=args.unit_only,
-        api_only=args.api_only
-    )
+    success = runner.run_all_tests(unit_only=args.unit_only, api_only=args.api_only)
 
     sys.exit(0 if success else 1)
 

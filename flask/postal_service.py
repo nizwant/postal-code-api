@@ -1,7 +1,16 @@
 from database import get_db_connection
 from house_number_matcher import is_house_number_in_range
 
-def build_search_query(city=None, street=None, house_number=None, province=None, county=None, municipality=None, limit=100):
+
+def build_search_query(
+    city=None,
+    street=None,
+    house_number=None,
+    province=None,
+    county=None,
+    municipality=None,
+    limit=100,
+):
     """Build a search query with the given parameters."""
     query = "SELECT * FROM postal_codes WHERE 1=1"
     params = []
@@ -33,6 +42,7 @@ def build_search_query(city=None, street=None, house_number=None, province=None,
 
     return query, params
 
+
 def filter_by_house_number(results, house_number, limit):
     """Filter database results by house number using the range matching logic."""
     if not house_number:
@@ -41,7 +51,7 @@ def filter_by_house_number(results, house_number, limit):
     filtered_results = []
 
     for row in results:
-        house_numbers = row['house_numbers']
+        house_numbers = row["house_numbers"]
 
         # Records without house_numbers don't match specific house number searches
         if not house_numbers:
@@ -57,12 +67,17 @@ def filter_by_house_number(results, house_number, limit):
 
     return filtered_results
 
-def search_with_fallbacks(city, street, house_number, province, county, municipality, limit):
+
+def search_with_fallbacks(
+    city, street, house_number, province, county, municipality, limit
+):
     """Execute search with cascading fallbacks."""
     conn = get_db_connection()
 
     # Try main search (without house_number in SQL)
-    query, params = build_search_query(city, street, house_number, province, county, municipality, limit)
+    query, params = build_search_query(
+        city, street, house_number, province, county, municipality, limit
+    )
     sql_results = conn.execute(query, params).fetchall()
 
     # Apply house number filtering in Python
@@ -74,7 +89,9 @@ def search_with_fallbacks(city, street, house_number, province, county, municipa
     # Fallback 1: Remove house_number if present and no results
     if len(results) == 0 and house_number:
         # Re-run query without house_number considerations
-        query, params = build_search_query(city, street, None, province, county, municipality, limit)
+        query, params = build_search_query(
+            city, street, None, province, county, municipality, limit
+        )
         results = conn.execute(query, params).fetchall()
         if len(results) > 0:
             fallback_used = True
@@ -88,7 +105,9 @@ def search_with_fallbacks(city, street, house_number, province, county, municipa
 
     # Fallback 2: Remove street if still no results and we have city + street
     if len(results) == 0 and city and street:
-        query, params = build_search_query(city, None, None, province, county, municipality, limit)
+        query, params = build_search_query(
+            city, None, None, province, county, municipality, limit
+        )
         results = conn.execute(query, params).fetchall()
         if len(results) > 0:
             fallback_used = True
@@ -100,7 +119,16 @@ def search_with_fallbacks(city, street, house_number, province, county, municipa
     conn.close()
     return results, fallback_used, fallback_message
 
-def search_postal_codes(city=None, street=None, house_number=None, province=None, county=None, municipality=None, limit=100):
+
+def search_postal_codes(
+    city=None,
+    street=None,
+    house_number=None,
+    province=None,
+    county=None,
+    municipality=None,
+    limit=100,
+):
     """Search postal codes with given parameters."""
     results, fallback_used, fallback_message = search_with_fallbacks(
         city, street, house_number, province, county, municipality, limit
@@ -109,33 +137,32 @@ def search_postal_codes(city=None, street=None, house_number=None, province=None
     # Format results
     postal_codes = []
     for row in results:
-        postal_codes.append({
-            'postal_code': row['postal_code'],
-            'city': row['city'],
-            'street': row['street'],
-            'house_numbers': row['house_numbers'],
-            'municipality': row['municipality'],
-            'county': row['county'],
-            'province': row['province']
-        })
+        postal_codes.append(
+            {
+                "postal_code": row["postal_code"],
+                "city": row["city"],
+                "street": row["street"],
+                "house_numbers": row["house_numbers"],
+                "municipality": row["municipality"],
+                "county": row["county"],
+                "province": row["province"],
+            }
+        )
 
-    response = {
-        'results': postal_codes,
-        'count': len(postal_codes)
-    }
+    response = {"results": postal_codes, "count": len(postal_codes)}
 
     if fallback_used:
-        response['message'] = fallback_message
-        response['fallback_used'] = True
+        response["message"] = fallback_message
+        response["fallback_used"] = True
 
     return response
+
 
 def get_postal_code_by_code(postal_code):
     """Get postal code records by postal code."""
     conn = get_db_connection()
     results = conn.execute(
-        "SELECT * FROM postal_codes WHERE postal_code = ?",
-        (postal_code,)
+        "SELECT * FROM postal_codes WHERE postal_code = ?", (postal_code,)
     ).fetchall()
     conn.close()
 
@@ -144,20 +171,20 @@ def get_postal_code_by_code(postal_code):
 
     postal_codes = []
     for row in results:
-        postal_codes.append({
-            'postal_code': row['postal_code'],
-            'city': row['city'],
-            'street': row['street'],
-            'house_numbers': row['house_numbers'],
-            'municipality': row['municipality'],
-            'county': row['county'],
-            'province': row['province']
-        })
+        postal_codes.append(
+            {
+                "postal_code": row["postal_code"],
+                "city": row["city"],
+                "street": row["street"],
+                "house_numbers": row["house_numbers"],
+                "municipality": row["municipality"],
+                "county": row["county"],
+                "province": row["province"],
+            }
+        )
 
-    return {
-        'results': postal_codes,
-        'count': len(postal_codes)
-    }
+    return {"results": postal_codes, "count": len(postal_codes)}
+
 
 def get_provinces():
     """Get all provinces."""
@@ -168,9 +195,10 @@ def get_provinces():
     conn.close()
 
     return {
-        'provinces': [row['province'] for row in provinces],
-        'count': len(provinces)
+        "provinces": [row["province"] for row in provinces],
+        "count": len(provinces),
     }
+
 
 def get_counties(province=None):
     """Get counties, optionally filtered by province."""
@@ -178,7 +206,7 @@ def get_counties(province=None):
     if province:
         counties = conn.execute(
             "SELECT DISTINCT county FROM postal_codes WHERE county IS NOT NULL AND LOWER(province) = LOWER(?) ORDER BY county",
-            (province,)
+            (province,),
         ).fetchall()
     else:
         counties = conn.execute(
@@ -187,14 +215,17 @@ def get_counties(province=None):
     conn.close()
 
     return {
-        'counties': [row['county'] for row in counties],
-        'count': len(counties),
-        'filtered_by_province': province if province else None
+        "counties": [row["county"] for row in counties],
+        "count": len(counties),
+        "filtered_by_province": province if province else None,
     }
+
 
 def get_municipalities(province=None, county=None):
     """Get municipalities, optionally filtered by province and county."""
-    query = "SELECT DISTINCT municipality FROM postal_codes WHERE municipality IS NOT NULL"
+    query = (
+        "SELECT DISTINCT municipality FROM postal_codes WHERE municipality IS NOT NULL"
+    )
     params = []
 
     if province:
@@ -212,11 +243,12 @@ def get_municipalities(province=None, county=None):
     conn.close()
 
     return {
-        'municipalities': [row['municipality'] for row in municipalities],
-        'count': len(municipalities),
-        'filtered_by_province': province if province else None,
-        'filtered_by_county': county if county else None
+        "municipalities": [row["municipality"] for row in municipalities],
+        "count": len(municipalities),
+        "filtered_by_province": province if province else None,
+        "filtered_by_county": county if county else None,
     }
+
 
 def get_cities(province=None, county=None, municipality=None):
     """Get cities, optionally filtered by province, county, and municipality."""
@@ -242,9 +274,9 @@ def get_cities(province=None, county=None, municipality=None):
     conn.close()
 
     return {
-        'cities': [row['city'] for row in cities],
-        'count': len(cities),
-        'filtered_by_province': province if province else None,
-        'filtered_by_county': county if county else None,
-        'filtered_by_municipality': municipality if municipality else None
+        "cities": [row["city"] for row in cities],
+        "count": len(cities),
+        "filtered_by_province": province if province else None,
+        "filtered_by_county": county if county else None,
+        "filtered_by_municipality": municipality if municipality else None,
     }

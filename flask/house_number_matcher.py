@@ -12,6 +12,7 @@ individual range patterns, not comma-separated combinations.
 import re
 from typing import Union
 
+
 def extract_numeric_part(house_number: str) -> Union[int, None]:
     """
     Extract the numeric part from a house number like "123a" -> 123.
@@ -26,18 +27,21 @@ def extract_numeric_part(house_number: str) -> Union[int, None]:
         return None
 
     # Match digits at the start of the string
-    match = re.match(r'^(\d+)', house_number.strip())
+    match = re.match(r"^(\d+)", house_number.strip())
     if match:
         return int(match.group(1))
     return None
+
 
 def is_odd(number: int) -> bool:
     """Check if a number is odd."""
     return number % 2 == 1
 
+
 def is_even(number: int) -> bool:
     """Check if a number is even."""
     return number % 2 == 0
+
 
 def parse_range_endpoints(range_part: str) -> tuple:
     """
@@ -50,26 +54,33 @@ def parse_range_endpoints(range_part: str) -> tuple:
         tuple: (start_num, end_num, is_dk, has_letter_start, has_letter_end)
     """
     # Handle DK (do końca / to the end) ranges
-    if 'DK' in range_part.upper():
-        dk_match = re.match(r'^(\d+[a-z]?)-DK', range_part, re.IGNORECASE)
+    if "DK" in range_part.upper():
+        dk_match = re.match(r"^(\d+[a-z]?)-DK", range_part, re.IGNORECASE)
         if dk_match:
             start_str = dk_match.group(1)
             start_num = extract_numeric_part(start_str)
-            has_letter_start = re.search(r'[a-z]', start_str) is not None
-            return (start_num, None, True, has_letter_start, False)  # None means infinite
+            has_letter_start = re.search(r"[a-z]", start_str) is not None
+            return (
+                start_num,
+                None,
+                True,
+                has_letter_start,
+                False,
+            )  # None means infinite
 
     # Handle regular ranges like "270-336" or "4a-9b"
-    range_match = re.match(r'^(\d+[a-z]?)-(\d+[a-z]?)$', range_part)
+    range_match = re.match(r"^(\d+[a-z]?)-(\d+[a-z]?)$", range_part)
     if range_match:
         start_str = range_match.group(1)
         end_str = range_match.group(2)
         start_num = extract_numeric_part(start_str)
         end_num = extract_numeric_part(end_str)
-        has_letter_start = re.search(r'[a-z]', start_str) is not None
-        has_letter_end = re.search(r'[a-z]', end_str) is not None
+        has_letter_start = re.search(r"[a-z]", start_str) is not None
+        has_letter_end = re.search(r"[a-z]", end_str) is not None
         return (start_num, end_num, False, has_letter_start, has_letter_end)
 
     return (None, None, False, False, False)
+
 
 def handle_slash_notation(house_number: str, range_string: str) -> bool:
     """
@@ -90,7 +101,9 @@ def handle_slash_notation(house_number: str, range_string: str) -> bool:
         return False
 
     # Pattern: "1/3-23/25(n)" - complex pattern with multiple slashes and ranges
-    complex_slash_match = re.match(r'^(\d+)/(\d+)-(\d+)/(\d+)(\([np]\))?$', range_string)
+    complex_slash_match = re.match(
+        r"^(\d+)/(\d+)-(\d+)/(\d+)(\([np]\))?$", range_string
+    )
     if complex_slash_match:
         start1 = int(complex_slash_match.group(1))
         start2 = int(complex_slash_match.group(2))
@@ -114,12 +127,12 @@ def handle_slash_notation(house_number: str, range_string: str) -> bool:
         return True
 
     # Pattern: "2/4" - individual numbers separated by slash
-    if re.match(r'^\d+/\d+$', range_string):
-        numbers = [extract_numeric_part(n) for n in range_string.split('/')]
+    if re.match(r"^\d+/\d+$", range_string):
+        numbers = [extract_numeric_part(n) for n in range_string.split("/")]
         return house_num in numbers
 
     # Pattern: "55-69/71" or "55-69/71(n)" - range with specific end points
-    slash_range_match = re.match(r'^(\d+)-(\d+)/(\d+)(\([np]\))?$', range_string)
+    slash_range_match = re.match(r"^(\d+)-(\d+)/(\d+)(\([np]\))?$", range_string)
     if slash_range_match:
         start = int(slash_range_match.group(1))
         mid = int(slash_range_match.group(2))
@@ -141,7 +154,7 @@ def handle_slash_notation(house_number: str, range_string: str) -> bool:
         return True
 
     # Pattern: "2/4-10" or "2/4-10(p)" - slash number plus range
-    slash_start_match = re.match(r'^(\d+)/(\d+)-(\d+)(\([np]\))?$', range_string)
+    slash_start_match = re.match(r"^(\d+)/(\d+)-(\d+)(\([np]\))?$", range_string)
     if slash_start_match:
         start1 = int(slash_start_match.group(1))
         start2 = int(slash_start_match.group(2))
@@ -171,6 +184,7 @@ def handle_slash_notation(house_number: str, range_string: str) -> bool:
         return in_range
 
     return False
+
 
 def is_house_number_in_range(house_number: str, range_string: str) -> bool:
     """
@@ -210,16 +224,16 @@ def is_house_number_in_range(house_number: str, range_string: str) -> bool:
         return False
 
     # Handle individual numbers (exact match)
-    if re.match(r'^\d+[a-z]?$', range_string):
+    if re.match(r"^\d+[a-z]?$", range_string):
         # For individual numbers with letters, require exact match
-        if re.search(r'[a-z]', range_string):
+        if re.search(r"[a-z]", range_string):
             return house_number == range_string
         # For pure numeric individual numbers, allow numeric match
         individual_num = extract_numeric_part(range_string)
         return individual_num is not None and house_num == individual_num
 
     # Handle slash notation patterns
-    if '/' in range_string:
+    if "/" in range_string:
         return handle_slash_notation(house_number, range_string)
 
     # Extract side indicator and base range
@@ -227,13 +241,15 @@ def is_house_number_in_range(house_number: str, range_string: str) -> bool:
     base_range = range_string
 
     # Check for side indicators: (n) = odd, (p) = even
-    side_match = re.search(r'\(([np])\)$', range_string)
+    side_match = re.search(r"\(([np])\)$", range_string)
     if side_match:
         side_indicator = side_match.group(1)
-        base_range = range_string[:side_match.start()]
+        base_range = range_string[: side_match.start()]
 
     # Parse the range
-    start_num, end_num, is_dk, has_letter_start, has_letter_end = parse_range_endpoints(base_range)
+    start_num, end_num, is_dk, has_letter_start, has_letter_end = parse_range_endpoints(
+        base_range
+    )
 
     if start_num is None:
         return False
@@ -244,7 +260,11 @@ def is_house_number_in_range(house_number: str, range_string: str) -> bool:
     if is_dk:
         # DK range: house_num >= start_num
         # Special case: if start has letter (e.g., "6a-DK"), plain number equal to start should NOT match
-        if has_letter_start and not re.search(r'[a-z]', house_number) and house_num == start_num:
+        if (
+            has_letter_start
+            and not re.search(r"[a-z]", house_number)
+            and house_num == start_num
+        ):
             return False  # "6" should not match "6a-DK", but "8" should
         in_range = house_num >= start_num
     elif end_num is not None:
@@ -266,6 +286,7 @@ def is_house_number_in_range(house_number: str, range_string: str) -> bool:
 
     # No side constraint, any house number in range is valid
     return True
+
 
 # For testing this module directly, run the comprehensive test suite:
 # python test_house_number_matching.py
