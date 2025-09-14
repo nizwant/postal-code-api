@@ -20,8 +20,8 @@ def build_search_query(
         params.append(f"{city}%")
 
     if street:
-        query += " AND LOWER(street) = LOWER(?)"
-        params.append(street)
+        query += " AND LOWER(street) LIKE LOWER(?)"
+        params.append(f"%{street}%")
 
     if province:
         query += " AND LOWER(province) = LOWER(?)"
