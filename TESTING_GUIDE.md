@@ -94,17 +94,20 @@ python3 postal_api_test_suite.py --quiet
 ## 🛠️ **For Future APIs (Go, Elixir, etc.)**
 
 ### **Step 1: Start Your New API**
+
 ```bash
 # Example for Go API
 go run main.go  # Assuming it runs on port 5003
 ```
 
 ### **Step 2: Quick Validation**
+
 ```bash
 python3 postal_api_test_suite.py --port 5003 --quick
 ```
 
 ### **Step 3: Compare with Baseline**
+
 ```bash
 # Edit the script to add your API to the comparison
 # Then run full comparison
@@ -116,12 +119,14 @@ python3 postal_api_test_suite.py
 ## 📈 **Success Criteria**
 
 ### **Ready for Production When:**
+
 - ✅ **Core tests**: 19/19 pass
 - ✅ **Cross-API consistency**: Identical results
 - ✅ **Performance**: Under 200ms response times
 - 🔶 **Human tests**: Passing helps UX but not required
 
 ### **Critical Failures:**
+
 - ❌ Any core test fails
 - ❌ APIs return different results
 - ❌ Response times > 500ms consistently
@@ -133,14 +138,17 @@ python3 postal_api_test_suite.py
 Based on human behavior test results:
 
 ### **High Impact (Easy Wins):**
+
 1. **Trim input spaces**: Handle `" Warszawa "` → `"Warszawa"`
 2. **Capitalize city names**: `"warszawa"` → `"Warszawa"`
 
 ### **Medium Impact (More Work):**
+
 3. **Polish character mapping**: `"Lodz"` → `"Łódź"`, `"Bialystok"` → `"Białystok"`
 4. **Fuzzy city matching**: Suggest corrections for close matches
 
 ### **Implementation Priority:**
+
 1. Input trimming (5 minutes)
 2. City capitalization (10 minutes)
 3. Character mapping (1 hour)
@@ -152,12 +160,6 @@ Based on human behavior test results:
 
 - **`postal_api_test_suite.py`** - Single comprehensive test suite
 - **`TESTING_GUIDE.md`** - This documentation
-
-**Removed Files:**
-- ~~`api_validation_suite.py`~~ (redundant)
-- ~~`quick_validation.py`~~ (redundant)
-- ~~`API_VALIDATION_GUIDE.md`~~ (redundant)
-- ~~`README_VALIDATION.md`~~ (redundant)
 
 ---
 
