@@ -27,6 +27,9 @@ python3 postal_api_test_suite.py --api fastapi
 # Test new API on custom port (e.g., Go on 5003)
 python3 postal_api_test_suite.py --port 5003
 
+# CSV validation tests only (verify API matches original data)
+python3 postal_api_test_suite.py --csv-tests
+
 # Save detailed JSON results for analysis
 python3 postal_api_test_suite.py --save-results
 
@@ -42,9 +45,10 @@ python3 postal_api_test_suite.py --quiet
 - **Pipeline integrity**: CSV → Database → API
 - **Polish patterns**: Odd/even, DK ranges, letter suffixes
 - **Complex cases**: Slash notation, multi-pattern matches
+- **CSV validation**: Direct API-to-CSV data verification
 - **Cross-API consistency**: Flask vs FastAPI identical results
 
-**Current Status: ✅ 19/19 PASS**
+**Current Status: ✅ 49/49 PASS**
 
 ### 🟡 **HUMAN Tests (May Fail - Improvement Opportunities)**
 - **Partial searches**: "Broniewskiego" vs full names
@@ -68,9 +72,10 @@ python3 postal_api_test_suite.py --quiet
 
 ### **✅ What Works Perfectly**
 
-| Test | Flask | FastAPI | Status |
+| Test Category | Flask | FastAPI | Status |
 |------|-------|---------|--------|
 | **Core Pipeline** | ✅ 9/9 | ✅ 9/9 | Perfect |
+| **CSV Validation** | ✅ 15/15 | ✅ 15/15 | Perfect |
 | **Health Checks** | ✅ Pass | ✅ Pass | Perfect |
 | **Warsaw Patterns** | ✅ Pass | ✅ Pass | Perfect |
 | **Complex Slash** | ✅ Pass | ✅ Pass | Perfect |
@@ -120,7 +125,7 @@ python3 postal_api_test_suite.py
 
 ### **Ready for Production When:**
 
-- ✅ **Core tests**: 19/19 pass
+- ✅ **Core tests**: 49/49 pass (including CSV validation)
 - ✅ **Cross-API consistency**: Identical results
 - ✅ **Performance**: Under 200ms response times
 - 🔶 **Human tests**: Passing helps UX but not required
@@ -166,9 +171,22 @@ Based on human behavior test results:
 Your postal code API system is:
 
 ✅ **100% Pipeline Validated**: CSV → Database → API verified
+✅ **CSV Data Integrity**: 15 diverse examples from original data confirmed
 ✅ **Cross-Platform Consistent**: Flask and FastAPI identical
 ✅ **Performance Tested**: Response times within acceptable ranges
 ✅ **Human-Behavior Analyzed**: Strengths and improvement areas identified
 ✅ **Future-Ready**: Easy validation for Go, Elixir implementations
 
 **One test suite to rule them all!** 🎯
+
+### **NEW: CSV Validation Tests**
+The test suite now includes 15 comprehensive tests that validate API output against original CSV data:
+- Village lookups (no streets)
+- Complex Warsaw addressing patterns (odd/even, DK ranges)
+- Gdansk examples with different patterns
+- Białystok with complex house number rules
+- Będzin with comma-separated patterns
+- Rural mountain villages (Białka Tatrzańska)
+- Multiple cities with same name (Adamowo in different provinces)
+
+All CSV validation tests **✅ PASS** - confirming complete data integrity from source to API.

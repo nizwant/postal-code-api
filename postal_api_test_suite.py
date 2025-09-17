@@ -7,10 +7,11 @@ Tests complete pipeline from CSV → Database → API responses.
 Includes human behavior simulation and cross-API validation.
 
 Usage:
-    python3 postal_api_test_suite.py                    # Test all APIs
+    python3 postal_api_test_suite.py                    # Test all APIs (full suite)
     python3 postal_api_test_suite.py --api flask        # Test Flask only
     python3 postal_api_test_suite.py --port 5003        # Test API on port 5003 (e.g., Go)
     python3 postal_api_test_suite.py --quick            # Run only core tests
+    python3 postal_api_test_suite.py --csv-tests        # Run only CSV validation tests
     python3 postal_api_test_suite.py --human-tests      # Run only human behavior tests
     python3 postal_api_test_suite.py --save-results     # Save detailed JSON results
 
@@ -547,6 +548,220 @@ class PostalAPITestSuite:
             self.results.append(test_result)
             print(f"{test_result.status.value} {test_result.name} ({test_result.response_time_ms:.1f}ms)")
 
+    def run_csv_validation_tests(self, api_name: str, base_url: str):
+        """Test that API outputs match original CSV data"""
+
+        self.log(f"\n📊 CSV VALIDATION TESTS - {api_name}")
+        self.log("=" * 60)
+        self.log("Testing diverse examples from original CSV data")
+
+        # Diverse examples collected from CSV analysis
+        csv_validation_tests = [
+            # Village entries (no streets)
+            {
+                'name': 'CSV: Village Abisynia (83-440)',
+                'params': {'city': 'Abisynia'},
+                'expected_postal_code': '83-440',
+                'expected_province': 'pomorskie',
+                'expected_county': 'kościerski'
+            },
+            {
+                'name': 'CSV: Village Abramy (05-310)',
+                'params': {'city': 'Abramy'},
+                'expected_postal_code': '05-310',
+                'expected_province': 'mazowieckie',
+                'expected_county': 'miński'
+            },
+
+            # Complex Warsaw addresses with house number patterns
+            {
+                'name': 'CSV: Warsaw Aleja 3 Maja 1 (odd)',
+                'params': {
+                    'city': 'Warszawa',
+                    'street': 'Aleja 3 Maja',
+                    'house_number': '1'
+                },
+                'expected_postal_code': '00-401',
+                'expected_house_pattern': '1-DK(n)'
+            },
+            {
+                'name': 'CSV: Warsaw Aleja 3 Maja 2 (even)',
+                'params': {
+                    'city': 'Warszawa',
+                    'street': 'Aleja 3 Maja',
+                    'house_number': '2'
+                },
+                'expected_postal_code': '00-391',
+                'expected_house_pattern': '2-12(p)'
+            },
+            {
+                'name': 'CSV: Warsaw Aleja 3 Maja 14 (even)',
+                'params': {
+                    'city': 'Warszawa',
+                    'street': 'Aleja 3 Maja',
+                    'house_number': '14'
+                },
+                'expected_postal_code': '00-381',
+                'expected_house_pattern': '14-DK(p)'
+            },
+            {
+                'name': 'CSV: Warsaw Abramowskiego 5 (odd)',
+                'params': {
+                    'city': 'Warszawa',
+                    'street': 'Edwarda Józefa Abramowskiego',
+                    'house_number': '5'
+                },
+                'expected_postal_code': '02-659',
+                'expected_house_pattern': '1-19(n), 2-16a(p)'
+            },
+
+            # Gdansk examples with different patterns
+            {
+                'name': 'CSV: Gdansk Arkońska 25',
+                'params': {
+                    'city': 'Gdańsk',
+                    'street': 'Arkońska',
+                    'house_number': '25'
+                },
+                'expected_postal_code': '80-387',
+                'expected_house_pattern': '5-29a'
+            },
+            {
+                'name': 'CSV: Gdansk Arkońska 30 (DK range)',
+                'params': {
+                    'city': 'Gdańsk',
+                    'street': 'Arkońska',
+                    'house_number': '30'
+                },
+                'expected_postal_code': '80-392',
+                'expected_house_pattern': '30-DK'
+            },
+
+            # Białystok examples with complex patterns
+            {
+                'name': 'CSV: Bialystok Pilsudskiego 1 (odd)',
+                'params': {
+                    'city': 'Białystok',
+                    'street': 'Aleja Józefa Piłsudskiego',
+                    'house_number': '1'
+                },
+                'expected_postal_code': '15-443',
+                'expected_house_pattern': '1-11(n)'
+            },
+            {
+                'name': 'CSV: Bialystok Pilsudskiego 44 (even DK)',
+                'params': {
+                    'city': 'Białystok',
+                    'street': 'Aleja Józefa Piłsudskiego',
+                    'house_number': '44'
+                },
+                'expected_postal_code': '15-088',
+                'expected_house_pattern': '44-DK(p)'
+            },
+
+            # Będzin with complex comma-separated patterns
+            {
+                'name': 'CSV: Bedzin Swierczewskiego 17 (odd)',
+                'params': {
+                    'city': 'Będzin',
+                    'street': 'Karola Świerczewskiego',
+                    'house_number': '17'
+                },
+                'expected_postal_code': '42-500',
+                'expected_house_pattern': '2-15, 17-103(n), 28-102(p), 115'
+            },
+            {
+                'name': 'CSV: Bedzin Swierczewskiego 28 (even)',
+                'params': {
+                    'city': 'Będzin',
+                    'street': 'Karola Świerczewskiego',
+                    'house_number': '28'
+                },
+                'expected_postal_code': '42-500',
+                'expected_house_pattern': '2-15, 17-103(n), 28-102(p), 115'
+            },
+
+            # Rural examples with unique provinces
+            {
+                'name': 'CSV: Bialka Tatrzanska (mountain village)',
+                'params': {
+                    'city': 'Białka Tatrzańska',
+                    'street': 'Środkowa',
+                    'house_number': '10'
+                },
+                'expected_postal_code': '34-405',
+                'expected_province': 'małopolskie',
+                'expected_county': 'tatrzański'
+            },
+
+            # Multiple cities with same name (different provinces)
+            {
+                'name': 'CSV: Adamowo (mazowieckie - Czerwonka)',
+                'params': {'city': 'Adamowo', 'municipality': 'Czerwonka'},
+                'expected_postal_code': '06-232',
+                'expected_province': 'mazowieckie',
+                'expected_county': 'makowski'
+            },
+            {
+                'name': 'CSV: Adamowo (warmińsko-mazurskie - Elbląg)',
+                'params': {'city': 'Adamowo', 'municipality': 'Elbląg'},
+                'expected_postal_code': '82-300',
+                'expected_province': 'warmińsko-mazurskie',
+                'expected_county': 'elbląski'
+            }
+        ]
+
+        for test in csv_validation_tests:
+            result, response_time = self.make_request(base_url, '/postal-codes', test['params'])
+
+            if result and 'results' in result and len(result['results']) > 0:
+                first_result = result['results'][0]
+                status = TestStatus.PASS
+                details = f"Found {len(result['results'])} records"
+
+                # Validate postal code if specified
+                if 'expected_postal_code' in test:
+                    if first_result.get('postal_code') != test['expected_postal_code']:
+                        status = TestStatus.FAIL
+                        details = f"Expected postal code {test['expected_postal_code']}, got {first_result.get('postal_code')}"
+
+                # Validate province if specified
+                if 'expected_province' in test and status == TestStatus.PASS:
+                    if first_result.get('province') != test['expected_province']:
+                        status = TestStatus.FAIL
+                        details = f"Expected province {test['expected_province']}, got {first_result.get('province')}"
+
+                # Validate county if specified
+                if 'expected_county' in test and status == TestStatus.PASS:
+                    if first_result.get('county') != test['expected_county']:
+                        status = TestStatus.FAIL
+                        details = f"Expected county {test['expected_county']}, got {first_result.get('county')}"
+
+                # Note house pattern for reference (not validation since patterns are complex)
+                if 'expected_house_pattern' in test and status == TestStatus.PASS:
+                    details += f" | Pattern: {test['expected_house_pattern']}"
+
+            else:
+                status = TestStatus.FAIL
+                details = "No results found"
+                first_result = None
+
+            test_result = TestResult(
+                name=test['name'],
+                category=TestCategory.CORE,  # CSV validation is core functionality
+                status=status,
+                expected=test.get('expected_postal_code', 'data found'),
+                actual=first_result.get('postal_code') if first_result else 'none',
+                response_time_ms=response_time,
+                details=details,
+                critical=True
+            )
+
+            self.results.append(test_result)
+            print(f"{test_result.status.value} [{api_name}] {test_result.name} ({test_result.response_time_ms:.1f}ms)")
+            if test_result.status == TestStatus.FAIL:
+                print(f"    {test_result.details}")
+
     def compare_apis(self, apis: Dict[str, str]):
         """Compare multiple APIs for consistency"""
 
@@ -739,6 +954,7 @@ Examples:
     parser.add_argument('--host', default='localhost', help='API host (default: localhost)')
     parser.add_argument('--quick', action='store_true', help='Run only core validation tests')
     parser.add_argument('--human-tests', action='store_true', help='Run only human behavior tests')
+    parser.add_argument('--csv-tests', action='store_true', help='Run only CSV validation tests')
     parser.add_argument('--save-results', action='store_true', help='Save detailed JSON results')
     parser.add_argument('--quiet', action='store_true', help='Minimal output')
 
@@ -772,11 +988,14 @@ Examples:
 
         if args.human_tests:
             suite.run_human_behavior_tests(api_name, base_url)
+        elif args.csv_tests:
+            suite.run_csv_validation_tests(api_name, base_url)
         elif args.quick:
             suite.run_core_validation_tests(api_name, base_url)
         else:
             # Full test suite
             suite.run_core_validation_tests(api_name, base_url)
+            suite.run_csv_validation_tests(api_name, base_url)
             suite.run_human_behavior_tests(api_name, base_url)
             suite.run_edge_case_tests(api_name, base_url)
             suite.run_performance_tests(api_name, base_url)
