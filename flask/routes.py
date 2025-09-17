@@ -9,18 +9,23 @@ from postal_service import (
 )
 
 
+def trim_param(value):
+    """Trim whitespace from parameter value if it exists"""
+    return value.strip() if value else value
+
+
 def register_routes(app):
     """Register all routes with the Flask app."""
 
     @app.route("/postal-codes", methods=["GET"])
     def search_postal_codes_route():
-        # Get query parameters
-        city = request.args.get("city")
-        street = request.args.get("street")
-        house_number = request.args.get("house_number")
-        province = request.args.get("province")
-        county = request.args.get("county")
-        municipality = request.args.get("municipality")
+        # Get query parameters and trim whitespace
+        city = trim_param(request.args.get("city"))
+        street = trim_param(request.args.get("street"))
+        house_number = trim_param(request.args.get("house_number"))
+        province = trim_param(request.args.get("province"))
+        county = trim_param(request.args.get("county"))
+        municipality = trim_param(request.args.get("municipality"))
         limit = request.args.get("limit", default=100, type=int)
 
         # Execute search
@@ -64,20 +69,20 @@ def register_routes(app):
 
     @app.route("/locations/counties", methods=["GET"])
     def get_counties_route():
-        province = request.args.get("province")
+        province = trim_param(request.args.get("province"))
         return jsonify(get_counties(province=province))
 
     @app.route("/locations/municipalities", methods=["GET"])
     def get_municipalities_route():
-        province = request.args.get("province")
-        county = request.args.get("county")
+        province = trim_param(request.args.get("province"))
+        county = trim_param(request.args.get("county"))
         return jsonify(get_municipalities(province=province, county=county))
 
     @app.route("/locations/cities", methods=["GET"])
     def get_cities_route():
-        province = request.args.get("province")
-        county = request.args.get("county")
-        municipality = request.args.get("municipality")
+        province = trim_param(request.args.get("province"))
+        county = trim_param(request.args.get("county"))
+        municipality = trim_param(request.args.get("municipality"))
         return jsonify(
             get_cities(province=province, county=county, municipality=municipality)
         )

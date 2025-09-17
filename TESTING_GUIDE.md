@@ -85,7 +85,7 @@ python3 postal_api_test_suite.py --quiet
 | `"Broniewskiego"` | ✅ YES | Finds full street names |
 | `"broniewskiego"` | ✅ YES | Case insensitive |
 | `"Curie"` | ✅ YES | Finds complex names |
-| `"warszawa"` | ⚠️ NO | Needs "Warszawa" (capital) |
+| `"warszawa"` | ✅ YES | Case insensitive cities work |
 | `"Lodz"` | ⚠️ NO | Needs "Łódź" (Polish chars) |
 | `" Warszawa "` | ⚠️ NO | Extra spaces break search |
 
@@ -140,7 +140,6 @@ Based on human behavior test results:
 ### **High Impact (Easy Wins):**
 
 1. **Trim input spaces**: Handle `" Warszawa "` → `"Warszawa"`
-2. **Capitalize city names**: `"warszawa"` → `"Warszawa"`
 
 ### **Medium Impact (More Work):**
 
@@ -150,9 +149,8 @@ Based on human behavior test results:
 ### **Implementation Priority:**
 
 1. Input trimming (5 minutes)
-2. City capitalization (10 minutes)
-3. Character mapping (1 hour)
-4. Fuzzy matching (1 day)
+2. Character mapping (1 hour)
+3. Fuzzy matching (1 day)
 
 ---
 

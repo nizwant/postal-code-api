@@ -12,6 +12,11 @@ from postal_service import (
 router = APIRouter()
 
 
+def trim_param(value: Optional[str]) -> Optional[str]:
+    """Trim whitespace from parameter value if it exists"""
+    return value.strip() if value else value
+
+
 @router.get("/postal-codes")
 def search_postal_codes_route(
     city: Optional[str] = Query(None),
@@ -23,13 +28,14 @@ def search_postal_codes_route(
     limit: int = Query(100, ge=1),
 ):
     """Search postal codes with given parameters."""
+    # Trim whitespace from all string parameters
     response = search_postal_codes(
-        city=city,
-        street=street,
-        house_number=house_number,
-        province=province,
-        county=county,
-        municipality=municipality,
+        city=trim_param(city),
+        street=trim_param(street),
+        house_number=trim_param(house_number),
+        province=trim_param(province),
+        county=trim_param(county),
+        municipality=trim_param(municipality),
         limit=limit,
     )
 
@@ -69,7 +75,7 @@ def get_provinces_route():
 @router.get("/locations/counties")
 def get_counties_route(province: Optional[str] = Query(None)):
     """Get counties, optionally filtered by province."""
-    return get_counties(province=province)
+    return get_counties(province=trim_param(province))
 
 
 @router.get("/locations/municipalities")
@@ -78,7 +84,7 @@ def get_municipalities_route(
     county: Optional[str] = Query(None),
 ):
     """Get municipalities, optionally filtered by province and county."""
-    return get_municipalities(province=province, county=county)
+    return get_municipalities(province=trim_param(province), county=trim_param(county))
 
 
 @router.get("/locations/cities")
@@ -88,7 +94,11 @@ def get_cities_route(
     municipality: Optional[str] = Query(None),
 ):
     """Get cities, optionally filtered by province, county, and municipality."""
-    return get_cities(province=province, county=county, municipality=municipality)
+    return get_cities(
+        province=trim_param(province),
+        county=trim_param(county),
+        municipality=trim_param(municipality),
+    )
 
 
 @router.get("/health")
