@@ -135,7 +135,7 @@ def search_postal_codes(
     municipality=None,
     limit=100,
 ):
-    """Search postal codes with enhanced approach: exact first, then Polish normalization, then fallbacks."""
+    """Search postal codes with four-tier approach: exact, Polish normalization, fallbacks, then Polish fallbacks."""
 
     # Tier 1: Exact search with original parameters (no fallbacks yet)
     conn = get_db_connection()
@@ -191,6 +191,37 @@ def search_postal_codes(
             results, fallback_used, fallback_message = search_with_fallbacks(
                 city, street, house_number, province, county, municipality, limit
             )
+
+            # Tier 4: Polish normalization fallback logic (only if Tier 3 failed)
+            if len(results) == 0:
+                normalized_params = get_normalized_search_params(
+                    city=city,
+                    street=street,
+                    house_number=house_number,
+                    province=province,
+                    county=county,
+                    municipality=municipality,
+                    limit=limit
+                )
+
+                # Search using normalized columns with fallback logic
+                tier4_results, tier4_fallback_used, tier4_fallback_message = search_with_fallbacks(
+                    normalized_params.get('city'),
+                    normalized_params.get('street'),
+                    normalized_params.get('house_number'),
+                    normalized_params.get('province'),
+                    normalized_params.get('county'),
+                    normalized_params.get('municipality'),
+                    normalized_params.get('limit', limit),
+                    use_normalized=True
+                )
+
+                if len(tier4_results) > 0:
+                    results = tier4_results
+                    fallback_used = tier4_fallback_used
+                    fallback_message = tier4_fallback_message
+                    polish_fallback_used = True
+                    search_type = "polish_characters"
 
     # Format results
     postal_codes = []
