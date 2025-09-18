@@ -1,5 +1,11 @@
 from database import get_db_connection
 from house_number_matcher import is_house_number_in_range
+import sys
+import os
+
+# Add parent directory to path to import polish_normalizer
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from polish_normalizer import get_alternative_search_params
 
 
 def build_search_query(
@@ -129,10 +135,48 @@ def search_postal_codes(
     municipality=None,
     limit=100,
 ):
-    """Search postal codes with given parameters."""
+    """Search postal codes with two-tier approach: exact first, then Polish character fallback."""
+
+    # Tier 1: Exact search with original parameters
     results, fallback_used, fallback_message = search_with_fallbacks(
         city, street, house_number, province, county, municipality, limit
     )
+
+    polish_fallback_used = False
+    search_type = "exact"
+
+    # Tier 2: Polish character alternatives fallback (only if no exact results)
+    if len(results) == 0:
+        # Get alternative search parameters (handles both Polish→ASCII and ASCII→Polish)
+        alternative_params_list = get_alternative_search_params(
+            city=city,
+            street=street,
+            house_number=house_number,
+            province=province,
+            county=county,
+            municipality=municipality,
+            limit=limit
+        )
+
+        # Try each alternative until we find results
+        for alternative_params in alternative_params_list:
+            alt_results, alt_fallback_used, alt_fallback_message = search_with_fallbacks(
+                alternative_params.get('city'),
+                alternative_params.get('street'),
+                alternative_params.get('house_number'),
+                alternative_params.get('province'),
+                alternative_params.get('county'),
+                alternative_params.get('municipality'),
+                alternative_params.get('limit', limit)
+            )
+
+            if len(alt_results) > 0:
+                results = alt_results
+                fallback_used = alt_fallback_used
+                fallback_message = alt_fallback_message
+                polish_fallback_used = True
+                search_type = "polish_characters"
+                break  # Stop at first successful alternative
 
     # Format results
     postal_codes = []
@@ -149,11 +193,22 @@ def search_postal_codes(
             }
         )
 
-    response = {"results": postal_codes, "count": len(postal_codes)}
+    response = {
+        "results": postal_codes,
+        "count": len(postal_codes),
+        "search_type": search_type
+    }
 
     if fallback_used:
         response["message"] = fallback_message
         response["fallback_used"] = True
+
+    if polish_fallback_used:
+        if "message" in response:
+            response["message"] += " Polish characters were normalized for search."
+        else:
+            response["message"] = "Search performed with Polish character normalization."
+        response["polish_normalization_used"] = True
 
     return response
 

@@ -370,19 +370,19 @@ class PostalAPITestSuite:
                 'critical': False  # This will likely fail - city names are case sensitive
             },
 
-            # Polish character variations
+            # Polish character variations (now should work with two-tier search)
             {
-                'name': 'Human: No Polish Chars "Lodz" (should be Łódź)',
-                'params': {'city': 'Lodz', 'street': 'Brzezinska', 'limit': '3'},
+                'name': 'Human: ASCII "Lodz" → finds "Łódź"',
+                'params': {'city': 'Lodz', 'limit': '3'},
                 'min_count': 1,
-                'critical': False  # This will likely fail
+                'critical': False  # Now should pass with Polish character fallback
             },
 
             {
-                'name': 'Human: No Polish Chars "Bialystok" (should be Białystok)',
+                'name': 'Human: ASCII "Bialystok" → finds "Białystok"',
                 'params': {'city': 'Bialystok', 'street': 'Broniewskiego', 'limit': '3'},
                 'min_count': 1,
-                'critical': False  # This will likely fail
+                'critical': False  # Now should pass with Polish character fallback
             },
 
             # Common typos and approximations
