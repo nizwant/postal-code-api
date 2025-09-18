@@ -137,50 +137,50 @@ def search_postal_codes(
 ):
     """Search postal codes with four-tier approach: exact, Polish normalization, fallbacks, then Polish fallbacks."""
 
-    # Tier 1: Exact search with original parameters (no fallbacks yet)
-    conn = get_db_connection()
-    query, params = build_search_query(
-        city, street, house_number, province, county, municipality, limit
+    # Pre-calculate normalized parameters once (eliminates duplication)
+    normalized_params = get_normalized_search_params(
+        city=city,
+        street=street,
+        house_number=house_number,
+        province=province,
+        county=county,
+        municipality=municipality,
+        limit=limit
     )
-    sql_results = conn.execute(query, params).fetchall()
-    exact_results = filter_by_house_number(sql_results, house_number, limit)
-    conn.close()
+
+    # Extract normalized parameters to variables to reduce repetitive .get() calls
+    norm_city = normalized_params.get('city')
+    norm_street = normalized_params.get('street')
+    norm_house = normalized_params.get('house_number')
+    norm_province = normalized_params.get('province')
+    norm_county = normalized_params.get('county')
+    norm_municipality = normalized_params.get('municipality')
+    norm_limit = normalized_params.get('limit', limit)
 
     polish_fallback_used = False
     search_type = "exact"
     fallback_used = False
     fallback_message = ""
 
-    # If we have exact results, use them
+    # Tier 1: Exact search with original parameters
+    with get_db_connection() as conn:
+        query, params = build_search_query(
+            city, street, house_number, province, county, municipality, limit
+        )
+        sql_results = conn.execute(query, params).fetchall()
+        exact_results = filter_by_house_number(sql_results, house_number, limit)
+
     if len(exact_results) > 0:
         results = exact_results
     else:
-        # Tier 2: Polish character normalization fallback
-        normalized_params = get_normalized_search_params(
-            city=city,
-            street=street,
-            house_number=house_number,
-            province=province,
-            county=county,
-            municipality=municipality,
-            limit=limit
-        )
-
-        # Search using normalized columns (no fallbacks yet)
-        conn = get_db_connection()
-        query, params = build_search_query(
-            normalized_params.get('city'),
-            normalized_params.get('street'),
-            normalized_params.get('house_number'),
-            normalized_params.get('province'),
-            normalized_params.get('county'),
-            normalized_params.get('municipality'),
-            normalized_params.get('limit', limit),
-            use_normalized=True
-        )
-        sql_results = conn.execute(query, params).fetchall()
-        polish_results = filter_by_house_number(sql_results, normalized_params.get('house_number'), limit)
-        conn.close()
+        # Tier 2: Polish character normalization search
+        with get_db_connection() as conn:
+            query, params = build_search_query(
+                norm_city, norm_street, norm_house, norm_province, norm_county, norm_municipality, norm_limit,
+                use_normalized=True
+            )
+            sql_results = conn.execute(query, params).fetchall()
+            polish_results = filter_by_house_number(sql_results, norm_house, limit)
 
         if len(polish_results) > 0:
             results = polish_results
@@ -194,25 +194,9 @@ def search_postal_codes(
 
             # Tier 4: Polish normalization fallback logic (only if Tier 3 failed)
             if len(results) == 0:
-                normalized_params = get_normalized_search_params(
-                    city=city,
-                    street=street,
-                    house_number=house_number,
-                    province=province,
-                    county=county,
-                    municipality=municipality,
-                    limit=limit
-                )
-
                 # Search using normalized columns with fallback logic
                 tier4_results, tier4_fallback_used, tier4_fallback_message = search_with_fallbacks(
-                    normalized_params.get('city'),
-                    normalized_params.get('street'),
-                    normalized_params.get('house_number'),
-                    normalized_params.get('province'),
-                    normalized_params.get('county'),
-                    normalized_params.get('municipality'),
-                    normalized_params.get('limit', limit),
+                    norm_city, norm_street, norm_house, norm_province, norm_county, norm_municipality, norm_limit,
                     use_normalized=True
                 )
 
