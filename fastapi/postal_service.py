@@ -1,10 +1,5 @@
 from database import get_db_connection
 from house_number_matcher import is_house_number_in_range
-import sys
-import os
-
-# Add parent directory to path to import polish_normalizer
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from polish_normalizer import get_alternative_search_params
 
 
