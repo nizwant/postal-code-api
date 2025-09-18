@@ -385,6 +385,140 @@ class PostalAPITestSuite:
                 'critical': False  # Now should pass with Polish character fallback
             },
 
+            # Street-level Polish character normalization tests
+            {
+                'name': 'Human: ASCII "zlota" → finds "Złota" street in Warsaw',
+                'params': {'city': 'Warszawa', 'street': 'zlota', 'limit': '3'},
+                'min_count': 1,
+                'critical': False,
+                'expected_search_type': 'polish_characters',
+                'validator': lambda result: (
+                    result.get('search_type') == 'polish_characters' and
+                    any('Złota' in str(r.get('street', '')) for r in result.get('results', []))
+                )
+            },
+
+            {
+                'name': 'Human: ASCII "Lodz" variations → finds "Łódź"',
+                'params': {'city': 'Lodz', 'limit': '5'},
+                'min_count': 1,
+                'critical': False,
+                'expected_search_type': 'polish_characters'
+            },
+
+            {
+                'name': 'Human: Mixed case "lodz" → finds Polish cities',
+                'params': {'city': 'lodz', 'limit': '3'},
+                'min_count': 1,
+                'critical': False,
+                'expected_search_type': 'polish_characters'
+            },
+
+            {
+                'name': 'Human: ASCII "bialystok" → finds "Białystok"',
+                'params': {'city': 'bialystok', 'limit': '3'},
+                'min_count': 1,
+                'critical': False,
+                'expected_search_type': 'polish_characters'
+            },
+
+            {
+                'name': 'Human: ASCII street "brzezinska" → finds "Brzezińska"',
+                'params': {'city': 'Lodz', 'street': 'brzezinska', 'limit': '3'},
+                'min_count': 1,
+                'critical': False,
+                'expected_search_type': 'polish_characters'
+            },
+
+            # Comprehensive Łódź variations test coverage
+            # Test 1: łodz (lowercase ł with ASCII o, z)
+            {
+                'name': 'Polish: "łodz" city only → finds Łódź',
+                'params': {'city': 'łodz', 'limit': '3'},
+                'min_count': 1,
+                'critical': False,
+                'expected_search_type': 'polish_characters'
+            },
+            {
+                'name': 'Polish: "łodz" with street → finds Łódź + street',
+                'params': {'city': 'łodz', 'street': 'Brzezińska', 'limit': '3'},
+                'min_count': 1,
+                'critical': False,
+                'expected_search_type': 'polish_characters'
+            },
+            {
+                'name': 'Polish: "łodz" with street+house → finds Łódź address',
+                'params': {'city': 'łodz', 'street': 'Brzezińska', 'house_number': '1', 'limit': '3'},
+                'min_count': 1,
+                'critical': False,
+                'expected_search_type': 'polish_characters'
+            },
+
+            # Test 2: lódź (ASCII l with Polish ó, ź)
+            {
+                'name': 'Polish: "lódź" city only → finds Łódź',
+                'params': {'city': 'lódź', 'limit': '3'},
+                'min_count': 1,
+                'critical': False,
+                'expected_search_type': 'polish_characters'
+            },
+            {
+                'name': 'Polish: "lódź" with street → finds Łódź + street',
+                'params': {'city': 'lódź', 'street': 'Brzezińska', 'limit': '3'},
+                'min_count': 1,
+                'critical': False,
+                'expected_search_type': 'polish_characters'
+            },
+            {
+                'name': 'Polish: "lódź" with street+house → finds Łódź address',
+                'params': {'city': 'lódź', 'street': 'Brzezińska', 'house_number': '1', 'limit': '3'},
+                'min_count': 1,
+                'critical': False,
+                'expected_search_type': 'polish_characters'
+            },
+
+            # Test 3: łódź (full Polish characters)
+            {
+                'name': 'Polish: "łódź" city only → exact or normalized match',
+                'params': {'city': 'łódź', 'limit': '3'},
+                'min_count': 1,
+                'critical': False
+                # Note: This might be 'exact' if database has this form
+            },
+            {
+                'name': 'Polish: "łódź" with street → exact or normalized match',
+                'params': {'city': 'łódź', 'street': 'Brzezińska', 'limit': '3'},
+                'min_count': 1,
+                'critical': False
+            },
+            {
+                'name': 'Polish: "łódź" with street+house → exact or normalized address',
+                'params': {'city': 'łódź', 'street': 'Brzezińska', 'house_number': '1', 'limit': '3'},
+                'min_count': 1,
+                'critical': False
+            },
+
+            # Test 4: Mixed ASCII/Polish street combinations
+            {
+                'name': 'Polish: ASCII city "lodz" + ASCII street "brzezinska"',
+                'params': {'city': 'lodz', 'street': 'brzezinska', 'limit': '3'},
+                'min_count': 1,
+                'critical': False,
+                'expected_search_type': 'polish_characters'
+            },
+            {
+                'name': 'Polish: Polish city "łódź" + ASCII street "brzezinska"',
+                'params': {'city': 'łódź', 'street': 'brzezinska', 'limit': '3'},
+                'min_count': 1,
+                'critical': False
+            },
+            {
+                'name': 'Polish: ASCII city "lodz" + Polish street "Brzezińska"',
+                'params': {'city': 'lodz', 'street': 'Brzezińska', 'limit': '3'},
+                'min_count': 1,
+                'critical': False
+            },
+
             # Common typos and approximations
             {
                 'name': 'Human: Close Typo "Broniewski" (missing "ego")',
@@ -403,16 +537,43 @@ class PostalAPITestSuite:
         ]
 
         for test in human_tests:
-            test_result = self.run_test(
-                name=test['name'],
-                category=TestCategory.HUMAN,
-                api_name=api_name,
-                base_url=base_url,
-                endpoint='/postal-codes',
-                params=test['params'],
-                min_count=test.get('min_count'),
-                critical=test['critical']
-            )
+            # Handle tests with custom validators
+            if 'validator' in test:
+                result, response_time = self.make_request(base_url, '/postal-codes', test['params'])
+
+                if result and test['validator'](result):
+                    test_result = TestResult(
+                        name=f"[{api_name}] {test['name']}",
+                        category=TestCategory.HUMAN,
+                        status=TestStatus.PASS,
+                        expected="Custom validation passed",
+                        actual=f"search_type: {result.get('search_type', 'unknown')}",
+                        response_time_ms=response_time,
+                        details=f"Found {result.get('count', 0)} results with correct Polish normalization",
+                        critical=test['critical']
+                    )
+                else:
+                    test_result = TestResult(
+                        name=f"[{api_name}] {test['name']}",
+                        category=TestCategory.HUMAN,
+                        status=TestStatus.WARN if not test['critical'] else TestStatus.FAIL,
+                        expected="Custom validation passed",
+                        actual=f"search_type: {result.get('search_type', 'unknown') if result else 'no response'}",
+                        response_time_ms=response_time,
+                        details="Custom validation failed - check Polish character normalization",
+                        critical=test['critical']
+                    )
+            else:
+                test_result = self.run_test(
+                    name=test['name'],
+                    category=TestCategory.HUMAN,
+                    api_name=api_name,
+                    base_url=base_url,
+                    endpoint='/postal-codes',
+                    params=test['params'],
+                    min_count=test.get('min_count'),
+                    critical=test['critical']
+                )
 
             self.results.append(test_result)
             print(f"{test_result.status.value} {test_result.name} ({test_result.response_time_ms:.1f}ms)")

@@ -10,6 +10,50 @@ import os
 import re
 
 
+def normalize_polish_text(text):
+    """
+    Convert Polish characters to ASCII equivalents.
+
+    Args:
+        text (str or None): Text to normalize
+
+    Returns:
+        str or None: Normalized text, or None if input was None
+    """
+    if not text:
+        return text
+
+    POLISH_CHAR_MAP = {
+        # Lowercase Polish characters
+        'ą': 'a',
+        'ć': 'c',
+        'ę': 'e',
+        'ł': 'l',
+        'ń': 'n',
+        'ó': 'o',
+        'ś': 's',
+        'ź': 'z',
+        'ż': 'z',
+
+        # Uppercase Polish characters
+        'Ą': 'A',
+        'Ć': 'C',
+        'Ę': 'E',
+        'Ł': 'L',
+        'Ń': 'N',
+        'Ó': 'O',
+        'Ś': 'S',
+        'Ź': 'Z',
+        'Ż': 'Z'
+    }
+
+    result = text
+    for polish_char, ascii_char in POLISH_CHAR_MAP.items():
+        result = result.replace(polish_char, ascii_char)
+
+    return result
+
+
 def split_house_number_ranges(house_numbers_str):
     """
     Split comma-separated house number ranges into individual range parts.
@@ -85,7 +129,7 @@ def create_normalized_database():
     print(f"Original records: {len(df)}")
 
     # Create SQLite database
-    db_path = "postal_codes_normalized.db"
+    db_path = "postal_codes.db"
 
     # Remove existing database if it exists
     if os.path.exists(db_path):
@@ -95,7 +139,7 @@ def create_normalized_database():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # Create table with same structure as original
+    # Create table with normalized columns added
     cursor.execute(
         """
         CREATE TABLE postal_codes (
@@ -106,7 +150,9 @@ def create_normalized_database():
             house_numbers TEXT,
             municipality TEXT,
             county TEXT,
-            province TEXT
+            province TEXT,
+            city_normalized TEXT,
+            street_normalized TEXT
         )
     """
     )
@@ -130,6 +176,12 @@ def create_normalized_database():
     )
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_house_numbers ON postal_codes(house_numbers)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_city_normalized ON postal_codes(LOWER(city_normalized))"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_street_normalized ON postal_codes(LOWER(street_normalized))"
     )
 
     # Counters for tracking
@@ -159,8 +211,8 @@ def create_normalized_database():
             cursor.execute(
                 """
                 INSERT INTO postal_codes
-                (postal_code, city, street, house_numbers, municipality, county, province)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                (postal_code, city, street, house_numbers, municipality, county, province, city_normalized, street_normalized)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     base_record["postal_code"],
@@ -170,6 +222,8 @@ def create_normalized_database():
                     base_record["municipality"],
                     base_record["county"],
                     base_record["province"],
+                    normalize_polish_text(base_record["city"]),
+                    normalize_polish_text(base_record["street"]),
                 ),
             )
             records_without_house_numbers += 1
@@ -191,8 +245,8 @@ def create_normalized_database():
                     cursor.execute(
                         """
                         INSERT INTO postal_codes
-                        (postal_code, city, street, house_numbers, municipality, county, province)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        (postal_code, city, street, house_numbers, municipality, county, province, city_normalized, street_normalized)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                         (
                             base_record["postal_code"],
@@ -202,6 +256,8 @@ def create_normalized_database():
                             base_record["municipality"],
                             base_record["county"],
                             base_record["province"],
+                            normalize_polish_text(base_record["city"]),
+                            normalize_polish_text(base_record["street"]),
                         ),
                     )
                     total_normalized_records += 1
