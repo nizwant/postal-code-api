@@ -75,14 +75,28 @@ def filter_by_house_number(results, house_number, limit):
 
 
 def search_with_fallbacks(
-    city, street, house_number, province, county, municipality, limit, use_normalized=False
+    city,
+    street,
+    house_number,
+    province,
+    county,
+    municipality,
+    limit,
+    use_normalized=False,
 ):
     """Execute search with cascading fallbacks."""
     conn = get_db_connection()
 
     # Try main search (without house_number in SQL)
     query, params = build_search_query(
-        city, street, house_number, province, county, municipality, limit, use_normalized
+        city,
+        street,
+        house_number,
+        province,
+        county,
+        municipality,
+        limit,
+        use_normalized,
     )
     sql_results = conn.execute(query, params).fetchall()
 
@@ -145,17 +159,17 @@ def search_postal_codes(
         province=province,
         county=county,
         municipality=municipality,
-        limit=limit
+        limit=limit,
     )
 
     # Extract normalized parameters to variables to reduce repetitive .get() calls
-    norm_city = normalized_params.get('city')
-    norm_street = normalized_params.get('street')
-    norm_house = normalized_params.get('house_number')
-    norm_province = normalized_params.get('province')
-    norm_county = normalized_params.get('county')
-    norm_municipality = normalized_params.get('municipality')
-    norm_limit = normalized_params.get('limit', limit)
+    norm_city = normalized_params.get("city")
+    norm_street = normalized_params.get("street")
+    norm_house = normalized_params.get("house_number")
+    norm_province = normalized_params.get("province")
+    norm_county = normalized_params.get("county")
+    norm_municipality = normalized_params.get("municipality")
+    norm_limit = normalized_params.get("limit", limit)
 
     polish_fallback_used = False
     search_type = "exact"
@@ -176,8 +190,14 @@ def search_postal_codes(
         # Tier 2: Polish character normalization search
         with get_db_connection() as conn:
             query, params = build_search_query(
-                norm_city, norm_street, norm_house, norm_province, norm_county, norm_municipality, norm_limit,
-                use_normalized=True
+                norm_city,
+                norm_street,
+                norm_house,
+                norm_province,
+                norm_county,
+                norm_municipality,
+                norm_limit,
+                use_normalized=True,
             )
             sql_results = conn.execute(query, params).fetchall()
             polish_results = filter_by_house_number(sql_results, norm_house, limit)
@@ -195,9 +215,17 @@ def search_postal_codes(
             # Tier 4: Polish normalization fallback logic (only if Tier 3 failed)
             if len(results) == 0:
                 # Search using normalized columns with fallback logic
-                tier4_results, tier4_fallback_used, tier4_fallback_message = search_with_fallbacks(
-                    norm_city, norm_street, norm_house, norm_province, norm_county, norm_municipality, norm_limit,
-                    use_normalized=True
+                tier4_results, tier4_fallback_used, tier4_fallback_message = (
+                    search_with_fallbacks(
+                        norm_city,
+                        norm_street,
+                        norm_house,
+                        norm_province,
+                        norm_county,
+                        norm_municipality,
+                        norm_limit,
+                        use_normalized=True,
+                    )
                 )
 
                 if len(tier4_results) > 0:
@@ -225,7 +253,7 @@ def search_postal_codes(
     response = {
         "results": postal_codes,
         "count": len(postal_codes),
-        "search_type": search_type
+        "search_type": search_type,
     }
 
     if fallback_used:
@@ -236,7 +264,9 @@ def search_postal_codes(
         if "message" in response:
             response["message"] += " Polish characters were normalized for search."
         else:
-            response["message"] = "Search performed with Polish character normalization."
+            response["message"] = (
+                "Search performed with Polish character normalization."
+            )
         response["polish_normalization_used"] = True
 
     return response
@@ -270,43 +300,87 @@ def get_postal_code_by_code(postal_code):
     return {"results": postal_codes, "count": len(postal_codes)}
 
 
-def get_provinces():
-    """Get all provinces."""
-    conn = get_db_connection()
-    provinces = conn.execute(
-        "SELECT DISTINCT province FROM postal_codes WHERE province IS NOT NULL ORDER BY province"
-    ).fetchall()
-    conn.close()
+def get_provinces(prefix=None):
+    """Get all provinces, optionally filtered by prefix."""
+    with get_db_connection() as conn:
+        if prefix:
+            # Get all provinces and filter with Polish character normalization
+            provinces = conn.execute(
+                "SELECT DISTINCT province FROM postal_codes WHERE province IS NOT NULL ORDER BY province"
+            ).fetchall()
+
+            from polish_normalizer import normalize_polish_text
+
+            normalized_prefix = normalize_polish_text(prefix).lower()
+            original_prefix = prefix.lower()
+
+            # Filter provinces that start with either original or normalized prefix
+            filtered_provinces = [
+                row
+                for row in provinces
+                if (
+                    row["province"].lower().startswith(original_prefix)
+                    or normalize_polish_text(row["province"])
+                    .lower()
+                    .startswith(normalized_prefix)
+                )
+            ]
+        else:
+            filtered_provinces = conn.execute(
+                "SELECT DISTINCT province FROM postal_codes WHERE province IS NOT NULL ORDER BY province"
+            ).fetchall()
 
     return {
-        "provinces": [row["province"] for row in provinces],
-        "count": len(provinces),
+        "provinces": [row["province"] for row in filtered_provinces],
+        "count": len(filtered_provinces),
+        "filtered_by_prefix": prefix if prefix else None,
     }
 
 
-def get_counties(province=None):
-    """Get counties, optionally filtered by province."""
-    conn = get_db_connection()
+def get_counties(province=None, prefix=None):
+    """Get counties, optionally filtered by province and/or prefix."""
+    query = "SELECT DISTINCT county FROM postal_codes WHERE county IS NOT NULL"
+    params = []
+
     if province:
-        counties = conn.execute(
-            "SELECT DISTINCT county FROM postal_codes WHERE county IS NOT NULL AND LOWER(province) = LOWER(?) ORDER BY county",
-            (province,),
-        ).fetchall()
-    else:
-        counties = conn.execute(
-            "SELECT DISTINCT county FROM postal_codes WHERE county IS NOT NULL ORDER BY county"
-        ).fetchall()
-    conn.close()
+        query += " AND LOWER(province) = LOWER(?)"
+        params.append(province)
+
+    query += " ORDER BY county"
+
+    with get_db_connection() as conn:
+        counties = conn.execute(query, params).fetchall()
+
+        if prefix:
+            # Filter counties with Polish character normalization
+            from polish_normalizer import normalize_polish_text
+
+            normalized_prefix = normalize_polish_text(prefix).lower()
+            original_prefix = prefix.lower()
+
+            filtered_counties = [
+                row
+                for row in counties
+                if (
+                    row["county"].lower().startswith(original_prefix)
+                    or normalize_polish_text(row["county"])
+                    .lower()
+                    .startswith(normalized_prefix)
+                )
+            ]
+        else:
+            filtered_counties = counties
 
     return {
-        "counties": [row["county"] for row in counties],
-        "count": len(counties),
+        "counties": [row["county"] for row in filtered_counties],
+        "count": len(filtered_counties),
         "filtered_by_province": province if province else None,
+        "filtered_by_prefix": prefix if prefix else None,
     }
 
 
-def get_municipalities(province=None, county=None):
-    """Get municipalities, optionally filtered by province and county."""
+def get_municipalities(province=None, county=None, prefix=None):
+    """Get municipalities, optionally filtered by province, county, and/or prefix."""
     query = (
         "SELECT DISTINCT municipality FROM postal_codes WHERE municipality IS NOT NULL"
     )
@@ -322,20 +396,40 @@ def get_municipalities(province=None, county=None):
 
     query += " ORDER BY municipality"
 
-    conn = get_db_connection()
-    municipalities = conn.execute(query, params).fetchall()
-    conn.close()
+    with get_db_connection() as conn:
+        municipalities = conn.execute(query, params).fetchall()
+
+        if prefix:
+            # Filter municipalities with Polish character normalization
+            from polish_normalizer import normalize_polish_text
+
+            normalized_prefix = normalize_polish_text(prefix).lower()
+            original_prefix = prefix.lower()
+
+            filtered_municipalities = [
+                row
+                for row in municipalities
+                if (
+                    row["municipality"].lower().startswith(original_prefix)
+                    or normalize_polish_text(row["municipality"])
+                    .lower()
+                    .startswith(normalized_prefix)
+                )
+            ]
+        else:
+            filtered_municipalities = municipalities
 
     return {
-        "municipalities": [row["municipality"] for row in municipalities],
-        "count": len(municipalities),
+        "municipalities": [row["municipality"] for row in filtered_municipalities],
+        "count": len(filtered_municipalities),
         "filtered_by_province": province if province else None,
         "filtered_by_county": county if county else None,
+        "filtered_by_prefix": prefix if prefix else None,
     }
 
 
-def get_cities(province=None, county=None, municipality=None):
-    """Get cities, optionally filtered by province, county, and municipality."""
+def get_cities(province=None, county=None, municipality=None, prefix=None):
+    """Get cities, optionally filtered by province, county, municipality, and/or prefix."""
     query = "SELECT DISTINCT city FROM postal_codes WHERE city IS NOT NULL"
     params = []
 
@@ -351,11 +445,20 @@ def get_cities(province=None, county=None, municipality=None):
         query += " AND LOWER(municipality) = LOWER(?)"
         params.append(municipality)
 
+    if prefix:
+        # Use both original and normalized city columns for prefix matching
+        from polish_normalizer import normalize_polish_text
+
+        normalized_prefix = normalize_polish_text(prefix)
+        query += (
+            " AND (LOWER(city) LIKE LOWER(?) OR LOWER(city_normalized) LIKE LOWER(?))"
+        )
+        params.extend([f"{prefix}%", f"{normalized_prefix}%"])
+
     query += " ORDER BY city"
 
-    conn = get_db_connection()
-    cities = conn.execute(query, params).fetchall()
-    conn.close()
+    with get_db_connection() as conn:
+        cities = conn.execute(query, params).fetchall()
 
     return {
         "cities": [row["city"] for row in cities],
@@ -363,4 +466,5 @@ def get_cities(province=None, county=None, municipality=None):
         "filtered_by_province": province if province else None,
         "filtered_by_county": county if county else None,
         "filtered_by_municipality": municipality if municipality else None,
+        "filtered_by_prefix": prefix if prefix else None,
     }

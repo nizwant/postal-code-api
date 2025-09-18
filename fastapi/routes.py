@@ -67,24 +67,27 @@ def get_locations():
 
 
 @router.get("/locations/provinces")
-def get_provinces_route():
+def get_provinces_route(prefix: Optional[str] = Query(None)):
     """Get all provinces."""
-    return get_provinces()
+    return get_provinces(prefix=trim_param(prefix))
 
 
 @router.get("/locations/counties")
-def get_counties_route(province: Optional[str] = Query(None)):
+def get_counties_route(
+    province: Optional[str] = Query(None), prefix: Optional[str] = Query(None)
+):
     """Get counties, optionally filtered by province."""
-    return get_counties(province=trim_param(province))
+    return get_counties(province=trim_param(province), prefix=trim_param(prefix))
 
 
 @router.get("/locations/municipalities")
 def get_municipalities_route(
     province: Optional[str] = Query(None),
     county: Optional[str] = Query(None),
+    prefix: Optional[str] = Query(None),
 ):
     """Get municipalities, optionally filtered by province and county."""
-    return get_municipalities(province=trim_param(province), county=trim_param(county))
+    return get_municipalities(province=trim_param(province), county=trim_param(county), prefix=trim_param(prefix))
 
 
 @router.get("/locations/cities")
@@ -92,12 +95,14 @@ def get_cities_route(
     province: Optional[str] = Query(None),
     county: Optional[str] = Query(None),
     municipality: Optional[str] = Query(None),
+    prefix: Optional[str] = Query(None),
 ):
     """Get cities, optionally filtered by province, county, and municipality."""
     return get_cities(
         province=trim_param(province),
         county=trim_param(county),
         municipality=trim_param(municipality),
+        prefix=trim_param(prefix),
     )
 
 

@@ -65,26 +65,30 @@ def register_routes(app):
 
     @app.route("/locations/provinces", methods=["GET"])
     def get_provinces_route():
-        return jsonify(get_provinces())
+        prefix = trim_param(request.args.get("prefix"))
+        return jsonify(get_provinces(prefix=prefix))
 
     @app.route("/locations/counties", methods=["GET"])
     def get_counties_route():
         province = trim_param(request.args.get("province"))
-        return jsonify(get_counties(province=province))
+        prefix = trim_param(request.args.get("prefix"))
+        return jsonify(get_counties(province=province, prefix=prefix))
 
     @app.route("/locations/municipalities", methods=["GET"])
     def get_municipalities_route():
         province = trim_param(request.args.get("province"))
         county = trim_param(request.args.get("county"))
-        return jsonify(get_municipalities(province=province, county=county))
+        prefix = trim_param(request.args.get("prefix"))
+        return jsonify(get_municipalities(province=province, county=county, prefix=prefix))
 
     @app.route("/locations/cities", methods=["GET"])
     def get_cities_route():
         province = trim_param(request.args.get("province"))
         county = trim_param(request.args.get("county"))
         municipality = trim_param(request.args.get("municipality"))
+        prefix = trim_param(request.args.get("prefix"))
         return jsonify(
-            get_cities(province=province, county=county, municipality=municipality)
+            get_cities(province=province, county=county, municipality=municipality, prefix=prefix)
         )
 
     @app.route("/health", methods=["GET"])
