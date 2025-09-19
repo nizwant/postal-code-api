@@ -3,7 +3,10 @@
     "allow": [
       "Bash(curl:*)",
       "Bash(python3:*)",
-      "Read(//Users/mat/Desktop/**)"
+      "Read(//Users/mat/Desktop/**)",
+      "Bash(mkdir:*)",
+      "Bash(sqlite3:*)",
+      "Bash(go run:*)"
     ],
     "deny": [],
     "ask": []
