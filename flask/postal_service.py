@@ -74,7 +74,7 @@ def filter_by_house_number(results, house_number, limit):
     return filtered_results
 
 
-def search_with_fallbacks(
+def execute_fallback_search(
     city,
     street,
     house_number,
@@ -84,30 +84,15 @@ def search_with_fallbacks(
     limit,
     use_normalized=False,
 ):
-    """Execute search with cascading fallbacks."""
+    """Execute fallback search logic when initial search returned no results."""
     conn = get_db_connection()
-
-    # Try main search (without house_number in SQL)
-    query, params = build_search_query(
-        city,
-        street,
-        house_number,
-        province,
-        county,
-        municipality,
-        limit,
-        use_normalized,
-    )
-    sql_results = conn.execute(query, params).fetchall()
-
-    # Apply house number filtering in Python
-    results = filter_by_house_number(sql_results, house_number, limit)
 
     fallback_used = False
     fallback_message = ""
+    results = []
 
-    # Fallback 1: Remove house_number if present and no results
-    if len(results) == 0 and house_number:
+    # Fallback 1: Remove house_number if present
+    if house_number:
         # Re-run query without house_number considerations
         query, params = build_search_query(
             city, street, None, province, county, municipality, limit, use_normalized
@@ -208,7 +193,7 @@ def search_postal_codes(
             search_type = "polish_characters"
         else:
             # Tier 3: Original fallback logic (house_number → street → city-only)
-            results, fallback_used, fallback_message = search_with_fallbacks(
+            results, fallback_used, fallback_message = execute_fallback_search(
                 city, street, house_number, province, county, municipality, limit
             )
 
@@ -216,7 +201,7 @@ def search_postal_codes(
             if len(results) == 0:
                 # Search using normalized columns with fallback logic
                 tier4_results, tier4_fallback_used, tier4_fallback_message = (
-                    search_with_fallbacks(
+                    execute_fallback_search(
                         norm_city,
                         norm_street,
                         norm_house,

@@ -162,38 +162,16 @@ func filterByHouseNumber(results []database.PostalCode, houseNumber *string, lim
 	return filteredResults
 }
 
-// searchWithFallbacks executes search with cascading fallbacks
-func searchWithFallbacks(params utils.SearchParams, useNormalized bool) ([]database.PostalCode, bool, string, error) {
+// executeFallbackSearch executes fallback search logic when initial search returned no results
+func executeFallbackSearch(params utils.SearchParams, useNormalized bool) ([]database.PostalCode, bool, string, error) {
 	db := database.GetDB()
-
-	// Try main search (without house_number in SQL)
-	query, args := buildSearchQuery(params, useNormalized)
-	rows, err := db.Query(query, args...)
-	if err != nil {
-		return nil, false, "", fmt.Errorf("database query failed: %w", err)
-	}
-	defer rows.Close()
-
-	var sqlResults []database.PostalCode
-	for rows.Next() {
-		var pc database.PostalCode
-		var id int
-		var cityNormalized, streetNormalized interface{}
-		err := rows.Scan(&id, &pc.PostalCode, &pc.City, &pc.Street, &pc.HouseNumbers, &pc.Municipality, &pc.County, &pc.Province, &cityNormalized, &streetNormalized)
-		if err != nil {
-			return nil, false, "", fmt.Errorf("failed to scan row: %w", err)
-		}
-		sqlResults = append(sqlResults, pc)
-	}
-
-	// Apply house number filtering in Go
-	results := filterByHouseNumber(sqlResults, params.HouseNumber, params.Limit)
 
 	fallbackUsed := false
 	fallbackMessage := ""
+	var results []database.PostalCode
 
-	// Fallback 1: Remove house_number if present and no results
-	if len(results) == 0 && params.HouseNumber != nil && *params.HouseNumber != "" {
+	// Fallback 1: Remove house_number if present
+	if params.HouseNumber != nil && *params.HouseNumber != "" {
 		// Re-run query without house_number considerations
 		fallbackParams := params
 		fallbackParams.HouseNumber = nil
@@ -335,14 +313,14 @@ func SearchPostalCodes(params utils.SearchParams) (*SearchResponse, error) {
 			searchType = "polish_characters"
 		} else {
 			// Tier 3: Original fallback logic (house_number → street → city-only)
-			tier3Results, tier3FallbackUsed, tier3FallbackMessage, err := searchWithFallbacks(params, false)
+			tier3Results, tier3FallbackUsed, tier3FallbackMessage, err := executeFallbackSearch(params, false)
 			if err != nil {
 				return nil, fmt.Errorf("tier 3 fallback failed: %w", err)
 			}
 
 			// Tier 4: Polish normalization fallback logic (only if Tier 3 failed)
 			if len(tier3Results) == 0 {
-				tier4Results, tier4FallbackUsed, tier4FallbackMessage, err := searchWithFallbacks(normalizedParams, true)
+				tier4Results, tier4FallbackUsed, tier4FallbackMessage, err := executeFallbackSearch(normalizedParams, true)
 				if err != nil {
 					return nil, fmt.Errorf("tier 4 fallback failed: %w", err)
 				}
