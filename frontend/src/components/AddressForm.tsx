@@ -217,9 +217,9 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Main Fields */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {renderInput('city', t('search.city'), t('search.placeholder.city'))}
-          {renderInput('street', t('search.street'), t('search.placeholder.street'))}
-          {renderInput('house_number', t('search.houseNumber'), t('search.placeholder.houseNumber'))}
+          {renderInput('city', t('search.city'), t('search.placeholder.city'), true)}
+          {renderInput('street', t('search.street'), t('search.placeholder.street'), true)}
+          {renderInput('house_number', t('search.houseNumber'), t('search.placeholder.houseNumber'), true)}
         </div>
 
         {/* Advanced Options Toggle */}
@@ -249,12 +249,6 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
           </div>
         )}
 
-        {/* Helper Text */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
-          <p className="text-sm text-blue-700 dark:text-blue-300">
-            💡 {t('search.tip')}
-          </p>
-        </div>
 
         {/* Buttons */}
         <div className="flex space-x-3">
