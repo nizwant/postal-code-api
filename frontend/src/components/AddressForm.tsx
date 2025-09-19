@@ -64,7 +64,10 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
               response = await apiClient.getProvinces(value);
               break;
             case 'county':
-              response = await apiClient.getCounties(form.province || undefined, value);
+              response = await apiClient.getCounties(
+                form.province || undefined,
+                value
+              );
               break;
             case 'municipality':
               response = await apiClient.getMunicipalities(
@@ -95,10 +98,15 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
           }
 
           const suggestions = items.slice(0, 10).map(name => ({ name }));
-          setSuggestions(prev => ({
-            ...prev,
-            [field]: suggestions,
-          }));
+          console.log(`Setting ${field} suggestions:`, suggestions);
+          setSuggestions(prev => {
+            const newState = {
+              ...prev,
+              [field]: suggestions,
+            };
+            console.log(`New suggestions state:`, newState);
+            return newState;
+          });
         } catch (error) {
           console.error(`Failed to fetch ${field} suggestions:`, error);
           setSuggestions(prev => ({ ...prev, [field]: [] }));
@@ -108,6 +116,7 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
       }, 300);
     } else {
       setSuggestions(prev => ({ ...prev, [field]: [] }));
+      setLoadingSuggestions(prev => ({ ...prev, [field]: false }));
     }
   };
 
@@ -137,6 +146,13 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
   // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+
+      // Don't close if clicking on an input or suggestion dropdown
+      if (target.closest('input') || target.closest('[role="listbox"]') || target.closest('.suggestions-dropdown')) {
+        return;
+      }
+
       if (activeSuggestion) {
         setActiveSuggestion(null);
       }
@@ -156,6 +172,13 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
     const isLoadingSuggestion = loadingSuggestions[field];
     const showSuggestions = activeSuggestion === field && fieldSuggestions.length > 0;
 
+    console.log(`Field ${field}:`, {
+      activeSuggestion,
+      fieldSuggestions: fieldSuggestions.length,
+      showSuggestions,
+      isLoadingSuggestion
+    });
+
     return (
       <div className="space-y-1 relative">
         <label htmlFor={field} className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -170,7 +193,13 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
             type="text"
             value={form[field]}
             onChange={(e) => handleInputChange(field, e.target.value)}
-            onFocus={() => setActiveSuggestion(field)}
+            onFocus={() => {
+              setActiveSuggestion(field);
+              // If the field has content and no suggestions, fetch them
+              if (form[field].length >= 2 && !suggestions[field]?.length && !loadingSuggestions[field]) {
+                handleInputChange(field, form[field]);
+              }
+            }}
             placeholder={placeholder}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white bg-white"
             disabled={isLoading}
@@ -183,13 +212,14 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
         </div>
 
         {showSuggestions && (
-          <div className="absolute z-10 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-48 overflow-y-auto">
+          <div className="suggestions-dropdown absolute z-10 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-48 overflow-y-auto" role="listbox">
             {fieldSuggestions.map((suggestion, index) => (
               <button
                 key={index}
                 type="button"
                 onClick={() => handleSuggestionClick(field, suggestion)}
                 className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-900 dark:text-white flex justify-between items-center"
+                role="option"
               >
                 <span>{suggestion.name}</span>
                 {suggestion.count && (
