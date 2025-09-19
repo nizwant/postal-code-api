@@ -30,7 +30,7 @@ class TestPostalService(unittest.TestCase):
         query, params = build_search_query(city="Warszawa")
 
         self.assertIn("SELECT * FROM postal_codes", query)
-        self.assertIn("LOWER(city) LIKE LOWER(?)", query)
+        self.assertIn("city LIKE ? COLLATE NOCASE", query)
         self.assertEqual(params[0], "Warszawa%")
 
     def test_build_search_query_all_params(self):
@@ -44,13 +44,13 @@ class TestPostalService(unittest.TestCase):
             limit=50
         )
 
-        self.assertIn("LOWER(city) LIKE LOWER(?)", query)
-        self.assertIn("LOWER(street) = LOWER(?)", query)
-        self.assertIn("LOWER(province) = LOWER(?)", query)
-        self.assertIn("LOWER(county) = LOWER(?)", query)
-        self.assertIn("LOWER(municipality) = LOWER(?)", query)
+        self.assertIn("city LIKE ? COLLATE NOCASE", query)
+        self.assertIn("street LIKE ? COLLATE NOCASE", query)
+        self.assertIn("province = ? COLLATE NOCASE", query)
+        self.assertIn("county = ? COLLATE NOCASE", query)
+        self.assertIn("municipality = ? COLLATE NOCASE", query)
 
-        expected_params = ["Warszawa%", "Marszałkowska", "mazowieckie", "Warszawa", "Warszawa", 50]
+        expected_params = ["Warszawa%", "%Marszałkowska%", "mazowieckie", "Warszawa", "Warszawa", 50]
         self.assertEqual(params, expected_params)
 
     def test_build_search_query_with_house_number(self):

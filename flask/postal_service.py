@@ -22,23 +22,23 @@ def build_search_query(
     street_col = "street_normalized" if use_normalized else "street"
 
     if city:
-        query += f" AND LOWER({city_col}) LIKE LOWER(?)"
+        query += f" AND {city_col} LIKE ? COLLATE NOCASE"
         params.append(f"{city}%")
 
     if street:
-        query += f" AND LOWER({street_col}) LIKE LOWER(?)"
+        query += f" AND {street_col} LIKE ? COLLATE NOCASE"
         params.append(f"%{street}%")
 
     if province:
-        query += " AND LOWER(province) = LOWER(?)"
+        query += " AND province = ? COLLATE NOCASE"
         params.append(province)
 
     if county:
-        query += " AND LOWER(county) = LOWER(?)"
+        query += " AND county = ? COLLATE NOCASE"
         params.append(county)
 
     if municipality:
-        query += " AND LOWER(municipality) = LOWER(?)"
+        query += " AND municipality = ? COLLATE NOCASE"
         params.append(municipality)
 
     # Use a larger limit since we'll filter in Python
@@ -343,7 +343,7 @@ def get_counties(province=None, prefix=None):
     params = []
 
     if province:
-        query += " AND LOWER(province) = LOWER(?)"
+        query += " AND province = ? COLLATE NOCASE"
         params.append(province)
 
     query += " ORDER BY county"
@@ -387,11 +387,11 @@ def get_municipalities(province=None, county=None, prefix=None):
     params = []
 
     if province:
-        query += " AND LOWER(province) = LOWER(?)"
+        query += " AND province = ? COLLATE NOCASE"
         params.append(province)
 
     if county:
-        query += " AND LOWER(county) = LOWER(?)"
+        query += " AND county = ? COLLATE NOCASE"
         params.append(county)
 
     query += " ORDER BY municipality"
@@ -434,15 +434,15 @@ def get_cities(province=None, county=None, municipality=None, prefix=None):
     params = []
 
     if province:
-        query += " AND LOWER(province) = LOWER(?)"
+        query += " AND province = ? COLLATE NOCASE"
         params.append(province)
 
     if county:
-        query += " AND LOWER(county) = LOWER(?)"
+        query += " AND county = ? COLLATE NOCASE"
         params.append(county)
 
     if municipality:
-        query += " AND LOWER(municipality) = LOWER(?)"
+        query += " AND municipality = ? COLLATE NOCASE"
         params.append(municipality)
 
     if prefix:
@@ -451,7 +451,7 @@ def get_cities(province=None, county=None, municipality=None, prefix=None):
 
         normalized_prefix = normalize_polish_text(prefix)
         query += (
-            " AND (LOWER(city) LIKE LOWER(?) OR LOWER(city_normalized) LIKE LOWER(?))"
+            " AND (city LIKE ? COLLATE NOCASE OR city_normalized LIKE ? COLLATE NOCASE)"
         )
         params.extend([f"{prefix}%", f"{normalized_prefix}%"])
 

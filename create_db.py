@@ -161,27 +161,27 @@ def create_normalized_database():
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_postal_code ON postal_codes(postal_code)"
     )
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_city ON postal_codes(LOWER(city))")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_city ON postal_codes(city COLLATE NOCASE)")
     cursor.execute(
-        "CREATE INDEX IF NOT EXISTS idx_street ON postal_codes(LOWER(street))"
+        "CREATE INDEX IF NOT EXISTS idx_street ON postal_codes(street COLLATE NOCASE)"
     )
     cursor.execute(
-        "CREATE INDEX IF NOT EXISTS idx_province ON postal_codes(LOWER(province))"
+        "CREATE INDEX IF NOT EXISTS idx_province ON postal_codes(province COLLATE NOCASE)"
     )
     cursor.execute(
-        "CREATE INDEX IF NOT EXISTS idx_county ON postal_codes(LOWER(county))"
+        "CREATE INDEX IF NOT EXISTS idx_county ON postal_codes(county COLLATE NOCASE)"
     )
     cursor.execute(
-        "CREATE INDEX IF NOT EXISTS idx_municipality ON postal_codes(LOWER(municipality))"
+        "CREATE INDEX IF NOT EXISTS idx_municipality ON postal_codes(municipality COLLATE NOCASE)"
     )
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_house_numbers ON postal_codes(house_numbers)"
     )
     cursor.execute(
-        "CREATE INDEX IF NOT EXISTS idx_city_normalized ON postal_codes(LOWER(city_normalized))"
+        "CREATE INDEX IF NOT EXISTS idx_city_normalized ON postal_codes(city_normalized COLLATE NOCASE)"
     )
     cursor.execute(
-        "CREATE INDEX IF NOT EXISTS idx_street_normalized ON postal_codes(LOWER(street_normalized))"
+        "CREATE INDEX IF NOT EXISTS idx_street_normalized ON postal_codes(street_normalized COLLATE NOCASE)"
     )
 
     # Counters for tracking
