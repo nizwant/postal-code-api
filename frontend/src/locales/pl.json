@@ -1,0 +1,76 @@
+{
+  "nav": {
+    "title": "Wyszukiwarka Kodów Pocztowych",
+    "theme": "Zmień motyw",
+    "language": "Język"
+  },
+  "search": {
+    "title": "Znajdź Kod Pocztowy",
+    "subtitle": "Wpisz adres aby znaleźć kod pocztowy",
+    "city": "Miasto",
+    "street": "Ulica",
+    "houseNumber": "Numer domu",
+    "province": "Województwo",
+    "county": "Powiat",
+    "municipality": "Gmina",
+    "advanced": "Opcje zaawansowane",
+    "showAdvanced": "Pokaż opcje zaawansowane",
+    "hideAdvanced": "Ukryj opcje zaawansowane",
+    "submit": "Szukaj",
+    "clear": "Wyczyść",
+    "placeholder": {
+      "city": "np. Warszawa",
+      "street": "np. Marszałkowska",
+      "houseNumber": "np. 15",
+      "province": "np. mazowieckie",
+      "county": "np. warszawski",
+      "municipality": "np. Warszawa"
+    },
+    "optional": "(opcjonalne)",
+    "tip": "Więcej szczegółów = dokładniejszy wynik"
+  },
+  "reverse": {
+    "title": "Znajdź Adresy",
+    "subtitle": "Wpisz kod pocztowy aby znaleźć adresy",
+    "postalCode": "Kod pocztowy",
+    "placeholder": "np. 00-001",
+    "submit": "Szukaj"
+  },
+  "results": {
+    "title": "Wyniki wyszukiwania",
+    "count": "Znaleziono {count} wyników",
+    "noResults": "Nie znaleziono wyników",
+    "fallback": "Zastosowano wyszukiwanie zapasowe",
+    "fallbackInfo": "Nie znaleziono dokładnego dopasowania. Wyświetlane są najbliższe wyniki.",
+    "postalCode": "Kod pocztowy",
+    "city": "Miasto",
+    "street": "Ulica",
+    "houseNumbers": "Numery domów",
+    "municipality": "Gmina",
+    "county": "Powiat",
+    "province": "Województwo"
+  },
+  "api": {
+    "title": "API",
+    "current": "Aktualny",
+    "switch": "Przełącz API",
+    "status": "Status",
+    "responseTime": "Czas odpowiedzi",
+    "online": "Online",
+    "offline": "Offline",
+    "checking": "Sprawdzanie..."
+  },
+  "performance": {
+    "title": "Wydajność",
+    "responseTime": "Czas odpowiedzi: {time}ms",
+    "recordsSearched": "Przeszukano rekordów: {count}"
+  },
+  "errors": {
+    "generic": "Wystąpił błąd",
+    "network": "Błąd połączenia z API",
+    "notFound": "Nie znaleziono",
+    "invalidPostalCode": "Nieprawidłowy format kodu pocztowego",
+    "apiUnavailable": "API niedostępne"
+  },
+  "loading": "Ładowanie..."
+}

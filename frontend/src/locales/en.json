@@ -1,0 +1,76 @@
+{
+  "nav": {
+    "title": "Postal Code Lookup",
+    "theme": "Toggle theme",
+    "language": "Language"
+  },
+  "search": {
+    "title": "Find Postal Code",
+    "subtitle": "Enter address to find postal code",
+    "city": "City",
+    "street": "Street",
+    "houseNumber": "House number",
+    "province": "Province",
+    "county": "County",
+    "municipality": "Municipality",
+    "advanced": "Advanced options",
+    "showAdvanced": "Show advanced options",
+    "hideAdvanced": "Hide advanced options",
+    "submit": "Search",
+    "clear": "Clear",
+    "placeholder": {
+      "city": "e.g. Warsaw",
+      "street": "e.g. Marszałkowska",
+      "houseNumber": "e.g. 15",
+      "province": "e.g. mazowieckie",
+      "county": "e.g. warszawski",
+      "municipality": "e.g. Warsaw"
+    },
+    "optional": "(optional)",
+    "tip": "More details = more precise results"
+  },
+  "reverse": {
+    "title": "Find Addresses",
+    "subtitle": "Enter postal code to find addresses",
+    "postalCode": "Postal code",
+    "placeholder": "e.g. 00-001",
+    "submit": "Search"
+  },
+  "results": {
+    "title": "Search Results",
+    "count": "Found {count} results",
+    "noResults": "No results found",
+    "fallback": "Fallback search applied",
+    "fallbackInfo": "Exact match not found. Showing closest results.",
+    "postalCode": "Postal code",
+    "city": "City",
+    "street": "Street",
+    "houseNumbers": "House numbers",
+    "municipality": "Municipality",
+    "county": "County",
+    "province": "Province"
+  },
+  "api": {
+    "title": "API",
+    "current": "Current",
+    "switch": "Switch API",
+    "status": "Status",
+    "responseTime": "Response time",
+    "online": "Online",
+    "offline": "Offline",
+    "checking": "Checking..."
+  },
+  "performance": {
+    "title": "Performance",
+    "responseTime": "Response time: {time}ms",
+    "recordsSearched": "Records searched: {count}"
+  },
+  "errors": {
+    "generic": "An error occurred",
+    "network": "API connection error",
+    "notFound": "Not found",
+    "invalidPostalCode": "Invalid postal code format",
+    "apiUnavailable": "API unavailable"
+  },
+  "loading": "Loading..."
+}
