@@ -19,7 +19,7 @@ def trim_param(value: Optional[str]) -> Optional[str]:
 
 @router.get("/postal-codes")
 def search_postal_codes_route(
-    city: Optional[str] = Query(None),
+    city: str = Query(..., description="City name (required)"),
     street: Optional[str] = Query(None),
     house_number: Optional[str] = Query(None),
     province: Optional[str] = Query(None),
@@ -28,9 +28,14 @@ def search_postal_codes_route(
     limit: int = Query(100, ge=1),
 ):
     """Search postal codes with given parameters."""
-    # Trim whitespace from all string parameters
+    # Trim whitespace from city parameter and validate
+    city_trimmed = trim_param(city)
+    if not city_trimmed:
+        raise HTTPException(status_code=400, detail="City parameter is required")
+
+    # Trim whitespace from all other string parameters
     response = search_postal_codes(
-        city=trim_param(city),
+        city=city_trimmed,
         street=trim_param(street),
         house_number=trim_param(house_number),
         province=trim_param(province),

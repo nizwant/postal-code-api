@@ -28,6 +28,10 @@ def register_routes(app):
         municipality = trim_param(request.args.get("municipality"))
         limit = request.args.get("limit", default=100, type=int)
 
+        # City parameter is mandatory
+        if not city or not city.strip():
+            return jsonify({"error": "City parameter is required"}), 400
+
         # Execute search
         response = search_postal_codes(
             city=city,

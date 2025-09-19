@@ -128,6 +128,13 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate that city is provided
+    if (!form.city.trim()) {
+      alert(t('errors.cityRequired') || 'City is required');
+      return;
+    }
+
     onSubmit(form);
   };
 
@@ -248,8 +255,8 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
         {/* Main Fields */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {renderInput('city', t('search.city'), t('search.placeholder.city'), true)}
-          {renderInput('street', t('search.street'), t('search.placeholder.street'), true)}
-          {renderInput('house_number', t('search.houseNumber'), t('search.placeholder.houseNumber'), true)}
+          {renderInput('street', t('search.street'), t('search.placeholder.street'))}
+          {renderInput('house_number', t('search.houseNumber'), t('search.placeholder.houseNumber'))}
         </div>
 
         {/* Advanced Options Toggle */}
@@ -284,7 +291,7 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
         <div className="flex space-x-3">
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !form.city.trim()}
             className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md font-medium transition-colors"
           >
             {isLoading ? (
