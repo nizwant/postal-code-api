@@ -217,6 +217,29 @@ export class ApiClient {
     }
   }
 
+  async getStreets(city?: string, province?: string, county?: string, municipality?: string, prefix?: string): Promise<LocationResponse> {
+    const searchParams = new URLSearchParams();
+    if (city?.trim()) searchParams.append('city', city);
+    if (province?.trim()) searchParams.append('province', province);
+    if (county?.trim()) searchParams.append('county', county);
+    if (municipality?.trim()) searchParams.append('municipality', municipality);
+    if (prefix?.trim()) searchParams.append('prefix', prefix);
+
+    try {
+      const response = await this.fetchWithTimeout(
+        this.getProxyUrl(`locations/streets?${searchParams.toString()}`)
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      throw new Error(`Failed to fetch streets: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   cancel() {
     if (this.abortController) {
       this.abortController.abort();

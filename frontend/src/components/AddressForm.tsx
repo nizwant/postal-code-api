@@ -42,7 +42,7 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
     }
 
     // Only fetch suggestions for certain fields and when value is long enough
-    const shouldFetchSuggestions = ['city', 'province', 'county', 'municipality'].includes(field) &&
+    const shouldFetchSuggestions = ['city', 'street', 'province', 'county', 'municipality'].includes(field) &&
                                    value.length >= 2;
 
     if (shouldFetchSuggestions) {
@@ -54,6 +54,15 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
           switch (field) {
             case 'city':
               response = await apiClient.getCities(
+                form.province || undefined,
+                form.county || undefined,
+                form.municipality || undefined,
+                value
+              );
+              break;
+            case 'street':
+              response = await apiClient.getStreets(
+                form.city || undefined,
                 form.province || undefined,
                 form.county || undefined,
                 form.municipality || undefined,
@@ -85,6 +94,9 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
           switch (field) {
             case 'city':
               items = response.cities || [];
+              break;
+            case 'street':
+              items = response.streets || [];
               break;
             case 'province':
               items = response.provinces || [];

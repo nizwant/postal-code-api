@@ -468,3 +468,50 @@ def get_cities(province=None, county=None, municipality=None, prefix=None):
         "filtered_by_municipality": municipality if municipality else None,
         "filtered_by_prefix": prefix if prefix else None,
     }
+
+
+def get_streets(city=None, province=None, county=None, municipality=None, prefix=None):
+    """Get streets, optionally filtered by city, province, county, municipality, and/or prefix."""
+    query = "SELECT DISTINCT street FROM postal_codes WHERE street IS NOT NULL AND street != ''"
+    params = []
+
+    if city:
+        query += " AND city = ? COLLATE NOCASE"
+        params.append(city)
+
+    if province:
+        query += " AND province = ? COLLATE NOCASE"
+        params.append(province)
+
+    if county:
+        query += " AND county = ? COLLATE NOCASE"
+        params.append(county)
+
+    if municipality:
+        query += " AND municipality = ? COLLATE NOCASE"
+        params.append(municipality)
+
+    if prefix:
+        # Use both original and normalized street columns for prefix matching
+        from polish_normalizer import normalize_polish_text
+
+        normalized_prefix = normalize_polish_text(prefix)
+        query += (
+            " AND (street LIKE ? COLLATE NOCASE OR street_normalized LIKE ? COLLATE NOCASE)"
+        )
+        params.extend([f"{prefix}%", f"{normalized_prefix}%"])
+
+    query += " ORDER BY street"
+
+    with get_db_connection() as conn:
+        streets = conn.execute(query, params).fetchall()
+
+    return {
+        "streets": [row["street"] for row in streets],
+        "count": len(streets),
+        "filtered_by_city": city if city else None,
+        "filtered_by_province": province if province else None,
+        "filtered_by_county": county if county else None,
+        "filtered_by_municipality": municipality if municipality else None,
+        "filtered_by_prefix": prefix if prefix else None,
+    }

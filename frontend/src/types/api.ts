@@ -37,10 +37,12 @@ export interface LocationResponse {
   counties?: string[];
   municipalities?: string[];
   cities?: string[];
+  streets?: string[];
   filtered_by_prefix?: string | null;
   filtered_by_province?: string | null;
   filtered_by_county?: string | null;
   filtered_by_municipality?: string | null;
+  filtered_by_city?: string | null;
 }
 
 export interface ApiEndpoint {

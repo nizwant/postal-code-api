@@ -6,6 +6,7 @@ from postal_service import (
     get_counties,
     get_municipalities,
     get_cities,
+    get_streets,
 )
 
 
@@ -63,6 +64,7 @@ def register_routes(app):
                     "counties": "/locations/counties",
                     "municipalities": "/locations/municipalities",
                     "cities": "/locations/cities",
+                    "streets": "/locations/streets",
                 }
             }
         )
@@ -93,6 +95,17 @@ def register_routes(app):
         prefix = trim_param(request.args.get("prefix"))
         return jsonify(
             get_cities(province=province, county=county, municipality=municipality, prefix=prefix)
+        )
+
+    @app.route("/locations/streets", methods=["GET"])
+    def get_streets_route():
+        city = trim_param(request.args.get("city"))
+        province = trim_param(request.args.get("province"))
+        county = trim_param(request.args.get("county"))
+        municipality = trim_param(request.args.get("municipality"))
+        prefix = trim_param(request.args.get("prefix"))
+        return jsonify(
+            get_streets(city=city, province=province, county=county, municipality=municipality, prefix=prefix)
         )
 
     @app.route("/health", methods=["GET"])

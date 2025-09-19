@@ -7,6 +7,7 @@ from postal_service import (
     get_counties,
     get_municipalities,
     get_cities,
+    get_streets,
 )
 
 router = APIRouter()
@@ -67,6 +68,7 @@ def get_locations():
             "counties": "/locations/counties",
             "municipalities": "/locations/municipalities",
             "cities": "/locations/cities",
+            "streets": "/locations/streets",
         }
     }
 
@@ -104,6 +106,24 @@ def get_cities_route(
 ):
     """Get cities, optionally filtered by province, county, and municipality."""
     return get_cities(
+        province=trim_param(province),
+        county=trim_param(county),
+        municipality=trim_param(municipality),
+        prefix=trim_param(prefix),
+    )
+
+
+@router.get("/locations/streets")
+def get_streets_route(
+    city: Optional[str] = Query(None),
+    province: Optional[str] = Query(None),
+    county: Optional[str] = Query(None),
+    municipality: Optional[str] = Query(None),
+    prefix: Optional[str] = Query(None),
+):
+    """Get streets, optionally filtered by city, province, county, and municipality."""
+    return get_streets(
+        city=trim_param(city),
         province=trim_param(province),
         county=trim_param(county),
         municipality=trim_param(municipality),
