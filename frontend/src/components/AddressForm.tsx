@@ -77,9 +77,27 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
               return;
           }
 
+          // Extract the correct array based on the field type
+          let items: string[] = [];
+          switch (field) {
+            case 'city':
+              items = response.cities || [];
+              break;
+            case 'province':
+              items = response.provinces || [];
+              break;
+            case 'county':
+              items = response.counties || [];
+              break;
+            case 'municipality':
+              items = response.municipalities || [];
+              break;
+          }
+
+          const suggestions = items.slice(0, 10).map(name => ({ name }));
           setSuggestions(prev => ({
             ...prev,
-            [field]: response.results.slice(0, 10), // Limit to 10 suggestions
+            [field]: suggestions,
           }));
         } catch (error) {
           console.error(`Failed to fetch ${field} suggestions:`, error);

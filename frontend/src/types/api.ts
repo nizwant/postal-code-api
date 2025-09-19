@@ -32,8 +32,15 @@ export interface LocationOption {
 }
 
 export interface LocationResponse {
-  results: LocationOption[];
   count: number;
+  provinces?: string[];
+  counties?: string[];
+  municipalities?: string[];
+  cities?: string[];
+  filtered_by_prefix?: string | null;
+  filtered_by_province?: string | null;
+  filtered_by_county?: string | null;
+  filtered_by_municipality?: string | null;
 }
 
 export interface ApiEndpoint {
