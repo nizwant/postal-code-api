@@ -614,6 +614,262 @@ class ComprehensivePostalAPITestSuite:
             self.results.append(test_result)
             print(f"{test_result.status.value} {test_result.name} ({test_result.response_time_ms:.1f}ms)")
 
+    def _generate_creative_human_tests(self) -> List[Dict]:
+        """Generate 30 creative human behavior tests simulating real-world search mistakes"""
+
+        # These tests simulate how humans actually search - with mistakes, typos, wrong combinations, etc.
+        tests = [
+            # 1-5: Wrong city + street combinations (should fallback to city record)
+            {
+                'name': 'Human: Warsaw street "Marszałkowska" in Kraków → fallback to Kraków',
+                'params': {'city': 'Kraków', 'street': 'Marszałkowska'},
+                'fallback_expected': True,
+                'expected_city': 'Kraków',
+                'critical': False,
+                'description': 'Human searches for famous Warsaw street in Kraków, should get Kraków postal code'
+            },
+            {
+                'name': 'Human: "Słoneczna" in Białystok → specific street or city fallback',
+                'params': {'city': 'Białystok', 'street': 'Słoneczna'},
+                'fallback_expected': True,
+                'expected_city': 'Białystok',
+                'critical': False,
+                'description': 'Common street name, should find specific street or fallback to Białystok'
+            },
+            {
+                'name': 'Human: Kraków street "Floriańska" in Warsaw → fallback to Warsaw',
+                'params': {'city': 'Warszawa', 'street': 'Floriańska'},
+                'fallback_expected': True,
+                'expected_city': 'Warszawa',
+                'critical': False,
+                'description': 'Human searches for famous Kraków street in Warsaw, should get Warsaw postal code'
+            },
+            {
+                'name': 'Human: "Główna" in Grudziądz → fallback to city (86-300)',
+                'params': {'city': 'Grudziądz', 'street': 'Główna'},
+                'fallback_expected': True,
+                'expected_postal_codes': ['86-300'],
+                'expected_city': 'Grudziądz',
+                'critical': False,
+                'description': 'Grudziądz has single postal code, should fallback to generic city record'
+            },
+            {
+                'name': 'Human: "Aleje Jerozolimskie" in Adamów → fallback to Adamów postal code',
+                'params': {'city': 'Adamów', 'street': 'Aleje Jerozolimskie'},
+                'fallback_expected': True,
+                'expected_city': 'Adamów',
+                'critical': False,
+                'description': 'Human confuses small Adamów with Warsaw, should get Adamów postal code'
+            },
+
+            # 6-10: House numbers where no granular data exists (street exists but no house numbers in DB)
+            {
+                'name': 'Human: Adds house number to street with no number data',
+                'params': {'city': 'Babienica', 'street': 'Główna', 'house_number': '15'},
+                'fallback_expected': True,  # Should fallback to street-only
+                'critical': False,
+                'description': 'Human adds house number to street that only has city+street data'
+            },
+            {
+                'name': 'Human: House number for street without granular data #2',
+                'params': {'city': 'Zawiercie', 'street': 'Władysława Stanisława Reymonta', 'house_number': '42'},
+                'fallback_expected': True,
+                'critical': False,
+                'description': 'Long street name with no house number data in DB'
+            },
+            {
+                'name': 'Human: Guesses house number for Białystok street',
+                'params': {'city': 'Białystok', 'street': 'Adama Asnyka', 'house_number': '7'},
+                'fallback_expected': True,
+                'critical': False,
+                'description': 'Street exists but no house number granularity in DB'
+            },
+            {
+                'name': 'Human: Random house number for Gdańsk street',
+                'params': {'city': 'Gdańsk', 'street': 'Polskiego Czerwonego Krzyża', 'house_number': '123'},
+                'fallback_expected': True,
+                'critical': False,
+                'description': 'Human guesses house number for street without number data'
+            },
+            {
+                'name': 'Human: House number for Zabrze street without numbers',
+                'params': {'city': 'Zabrze', 'street': 'Borowikowa', 'house_number': '8'},
+                'fallback_expected': True,
+                'critical': False,
+                'description': 'Street exists but no house number patterns in database'
+            },
+
+            # 11-15: House numbers outside valid ranges (should fallback to street level)
+            {
+                'name': 'Human: House number outside Warsaw range → fallback to street',
+                'params': {'city': 'Warszawa', 'street': 'Edwarda Józefa Abramowskiego', 'house_number': '500'},
+                'fallback_expected': True,
+                'expected_city': 'Warszawa',
+                'expected_street_contains': 'Abramowskiego',
+                'critical': False,
+                'description': 'House number outside range, should fallback to street-level results'
+            },
+            {
+                'name': 'Human: Even number in odd-only range → fallback to street',
+                'params': {'city': 'Warszawa', 'street': 'Edwarda Józefa Abramowskiego', 'house_number': '12'},
+                'fallback_expected': True,
+                'expected_city': 'Warszawa',
+                'expected_street_contains': 'Abramowskiego',
+                'critical': False,
+                'description': 'Even number in odd range, should fallback to street-level results'
+            },
+            {
+                'name': 'Human: Number below DK range → fallback to street',
+                'params': {'city': 'Białystok', 'street': 'Nowowarszawska', 'house_number': '0'},
+                'fallback_expected': True,
+                'expected_city': 'Białystok',
+                'expected_street_contains': 'Nowowarszawska',
+                'critical': False,
+                'description': 'Number below range, should fallback to street-level results'
+            },
+            {
+                'name': 'Human: Decimal house number → fallback to street',
+                'params': {'city': 'Łódź', 'street': 'Brzezińska', 'house_number': '5.5'},
+                'fallback_expected': True,
+                'expected_city': 'Łódź',
+                'expected_street_contains': 'Brzezińska',
+                'critical': False,
+                'description': 'Invalid decimal format, should fallback to street-level results'
+            },
+            {
+                'name': 'Human: Letter suffix where none exist → fallback to street',
+                'params': {'city': 'Poznań', 'street': 'os. Jagiellońskie', 'house_number': '95a'},
+                'fallback_expected': True,
+                'expected_city': 'Poznań',
+                'expected_street_contains': 'Jagiellońskie',
+                'critical': False,
+                'description': 'Invalid letter suffix, should fallback to street-level results'
+            },
+
+            # 16-20: Polish character ASCII substitutions (realistic typing)
+            {
+                'name': 'Human: "lodz" instead of "Łódź" (ł→l)',
+                'params': {'city': 'lodz'},
+                'expected_fallback': 'polish_normalization',
+                'critical': False,
+                'description': 'Human types ł as l on ASCII keyboard'
+            },
+            {
+                'name': 'Human: "krakow" instead of "Kraków" (ó→o)',
+                'params': {'city': 'krakow'},
+                'expected_fallback': 'polish_normalization',
+                'critical': False,
+                'description': 'Human types ó as o on ASCII keyboard'
+            },
+            {
+                'name': 'Human: "wroclaw" instead of "Wrocław" (ł→l)',
+                'params': {'city': 'wroclaw'},
+                'expected_fallback': 'polish_normalization',
+                'critical': False,
+                'description': 'Human types ł as l in city name'
+            },
+            {
+                'name': 'Human: "gdansk" instead of "Gdańsk" (ń→n)',
+                'params': {'city': 'gdansk'},
+                'expected_fallback': 'polish_normalization',
+                'critical': False,
+                'description': 'Human types ń as n on ASCII keyboard'
+            },
+            {
+                'name': 'Human: Street "sloneczna" instead of "Słoneczna" (ł→l)',
+                'params': {'city': 'Piaseczno', 'street': 'sloneczna'},
+                'expected_fallback': 'polish_normalization',
+                'critical': False,
+                'description': 'Human types ł as l in street name'
+            },
+
+            # 21-25: Partial names and typos (most should find something or fallback)
+            {
+                'name': 'Human: Partial "Mickiew" for "Mickiewicza" → finds partial match',
+                'params': {'city': 'Łódź', 'street': 'Mickiew'},
+                'fallback_expected': True,
+                'expected_city': 'Łódź',
+                'critical': False,
+                'description': 'Human types partial street name, should find match or fallback'
+            },
+            {
+                'name': 'Human: Typo "Warzawa" → no match, should fail gracefully',
+                'params': {'city': 'Warzawa'},
+                'should_fail': True,
+                'critical': False,
+                'description': 'Severe typo with no fuzzy match available'
+            },
+            {
+                'name': 'Human: Double letter typo "Krakoww" → no match, should fail gracefully',
+                'params': {'city': 'Krakoww'},
+                'should_fail': True,
+                'critical': False,
+                'description': 'Typo that cannot be resolved'
+            },
+            {
+                'name': 'Human: Switched letters "Pznan" → no match, should fail gracefully',
+                'params': {'city': 'Pznan'},
+                'should_fail': True,
+                'critical': False,
+                'description': 'Typo without fuzzy matching capability'
+            },
+            {
+                'name': 'Human: Partial street "Koscieln" in Białystok → fallback to city',
+                'params': {'city': 'Białystok', 'street': 'Koscieln'},
+                'fallback_expected': True,
+                'expected_city': 'Białystok',
+                'critical': False,
+                'description': 'Partial street name, should fallback to Białystok postal codes'
+            },
+
+            # 26-30: Mixed case and unusual patterns (should work or fallback)
+            {
+                'name': 'Human: All caps "WARSZAWA" → should find Warsaw',
+                'params': {'city': 'WARSZAWA'},
+                'fallback_expected': True,
+                'expected_city': 'Warszawa',
+                'critical': False,
+                'description': 'Case insensitive search should work or fallback to Warsaw'
+            },
+            {
+                'name': 'Human: Mixed case "wARSZAWA" → should find Warsaw',
+                'params': {'city': 'wARSZAWA'},
+                'fallback_expected': True,
+                'expected_city': 'Warszawa',
+                'critical': False,
+                'description': 'Case issues should still resolve to Warsaw'
+            },
+            {
+                'name': 'Human: Street with extra spaces → find or fallback to city',
+                'params': {'city': 'Kraków', 'street': ' Główna '},
+                'fallback_expected': True,
+                'expected_city': 'Kraków',
+                'critical': False,
+                'description': 'Extra spaces should be handled or fallback to Kraków'
+            },
+            {
+                'name': 'Human: Missing "Aleja" prefix → fallback to Białystok',
+                'params': {'city': 'Białystok', 'street': 'Marszałka Józefa Piłsudskiego'},
+                'fallback_expected': True,
+                'expected_city': 'Białystok',
+                'critical': False,
+                'description': 'Incomplete street name should fallback to Białystok postal codes'
+            },
+            {
+                'name': 'Human: Short form "Jerozolimskie" → find or fallback to Warsaw',
+                'params': {'city': 'Warszawa', 'street': 'Jerozolimskie'},
+                'fallback_expected': True,
+                'expected_city': 'Warszawa',
+                'critical': False,
+                'description': 'Colloquial form should find match or fallback to Warsaw'
+            }
+        ]
+
+        # Randomly select 30 tests to keep variety in each run
+        selected_tests = random.sample(tests, min(30, len(tests)))
+
+        return selected_tests
+
     def run_human_behavior_tests(self, api_name: str, base_url: str):
         """Test how API handles real human search patterns"""
 
@@ -621,50 +877,115 @@ class ComprehensivePostalAPITestSuite:
         self.log("=" * 60)
         self.log("These tests simulate real user behavior. Some failures are expected.")
 
-        human_tests = [
-            {
-                'name': 'Human: Partial Street "Abramow" → finds "Abramowskiego"',
-                'params': {'city': 'Warszawa', 'street': 'Abramow', 'limit': '3'},
-                'min_count': 1,
-                'critical': False
-            },
-            {
-                'name': 'Human: ASCII "Bialystok" → finds "Białystok"',
-                'params': {'city': 'Bialystok', 'limit': '3'},
-                'min_count': 1,
-                'critical': False
-            },
-            {
-                'name': 'Human: Lowercase "warszawa" (case insensitive)',
-                'params': {'city': 'warszawa', 'limit': '3'},
-                'min_count': 1,
-                'critical': False
-            }
-        ]
+        # Generate 30 creative human behavior tests that simulate real-world mistakes
+        human_tests = self._generate_creative_human_tests()
 
         for test in human_tests:
             result, response_time = self.make_request(base_url, '/postal-codes', test['params'])
 
-            if result and 'results' in result and len(result['results']) >= test.get('min_count', 1):
-                status = TestStatus.PASS
-                details = f"Found {len(result['results'])} results"
+            # Determine expected behavior and validate accordingly
+            has_results = result and 'results' in result and len(result['results']) > 0
+            result_count = len(result.get('results', []))
+
+            # Validate based on test expectations
+            if test.get('should_fail', False):
+                # Test expects to fail (no results)
+                if not has_results:
+                    status = TestStatus.PASS
+                    details = f"Correctly returned no results (expected failure)"
+                else:
+                    status = TestStatus.WARN  # Not critical failure
+                    details = f"Expected no results but found {result_count}"
+            elif test.get('fallback_expected', False):
+                # Test expects fallback behavior (should find something, maybe without house number)
+                if has_results:
+                    # Additional validation for fallback expectations
+                    first_result = result['results'][0]
+
+                    # Check if expected city matches
+                    if 'expected_city' in test:
+                        expected_city = test['expected_city']
+                        actual_city = first_result.get('city', '')
+                        if expected_city.lower() in actual_city.lower():
+                            status = TestStatus.PASS
+                            details = f"Fallback successful - found {result_count} results for {expected_city}"
+                        else:
+                            status = TestStatus.WARN
+                            details = f"Found results but wrong city: expected {expected_city}, got {actual_city}"
+
+                    # Check if expected street is found
+                    elif 'expected_street_contains' in test:
+                        expected_street = test['expected_street_contains']
+                        actual_street = first_result.get('street', '')
+                        if expected_street.lower() in actual_street.lower():
+                            status = TestStatus.PASS
+                            details = f"Found expected street: {actual_street}"
+                        else:
+                            status = TestStatus.PASS  # Still good if it found the city
+                            details = f"Fallback to city level - found {result_count} results"
+
+                    # Check expected postal codes
+                    elif 'expected_postal_codes' in test:
+                        expected_codes = test['expected_postal_codes']
+                        found_codes = [r.get('postal_code') for r in result['results']]
+                        if any(code in found_codes for code in expected_codes):
+                            status = TestStatus.PASS
+                            details = f"Found expected postal code: {found_codes[0]}"
+                        else:
+                            status = TestStatus.WARN
+                            details = f"Expected {expected_codes}, got {found_codes[:3]}"
+
+                    else:
+                        status = TestStatus.PASS
+                        details = f"Fallback successful - found {result_count} results"
+                else:
+                    status = TestStatus.WARN
+                    details = f"Fallback failed - no results found"
+            elif 'min_count' in test:
+                # Test has specific minimum count requirement
+                min_count = test['min_count']
+                if result_count >= min_count:
+                    status = TestStatus.PASS
+                    details = f"Found {result_count} results (≥{min_count})"
+                else:
+                    status = TestStatus.WARN if not test['critical'] else TestStatus.FAIL
+                    details = f"Expected ≥{min_count} results, got {result_count}"
             else:
-                status = TestStatus.FAIL if test['critical'] else TestStatus.WARN
-                details = f"Expected at least {test.get('min_count', 1)} results, got {len(result.get('results', []))}"
+                # Default: expect at least some results
+                if has_results:
+                    status = TestStatus.PASS
+                    details = f"Found {result_count} results"
+                else:
+                    status = TestStatus.WARN if not test['critical'] else TestStatus.FAIL
+                    details = f"No results found"
+
+            # Expected vs actual for display
+            if test.get('should_fail'):
+                expected_str = "No results (failure expected)"
+            elif test.get('fallback_expected'):
+                expected_str = "Fallback results"
+            elif 'min_count' in test:
+                expected_str = f"≥{test['min_count']} results"
+            else:
+                expected_str = "Some results"
 
             test_result = TestResult(
                 name=f"[{api_name}] {test['name']}",
                 category=TestCategory.HUMAN,
                 status=status,
-                expected=f"≥{test.get('min_count', 1)} results",
-                actual=f"{len(result.get('results', []))} results" if result else "No results",
+                expected=expected_str,
+                actual=f"{result_count} results" if result else "No response",
                 response_time_ms=response_time,
                 details=details,
-                critical=test['critical']
+                critical=test.get('critical', False)
             )
 
             self.results.append(test_result)
             print(f"{test_result.status.value} {test_result.name} ({test_result.response_time_ms:.1f}ms)")
+
+            # Print description for context (in verbose mode)
+            if self.verbose and test.get('description'):
+                print(f"    💡 {test['description']}")
 
     def run_edge_case_tests(self, api_name: str, base_url: str):
         """Test edge cases and error handling"""

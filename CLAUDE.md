@@ -245,9 +245,55 @@ The goal is API performance comparison, so:
 ## Data Mapping
 CSV columns → API fields:
 - PNA → postal_code
-- Miejscowość → city  
+- Miejscowość → city
 - Ulica → street
 - Numery → house_numbers
 - Gmina → municipality
 - Powiat → county
 - Województwo → province
+
+## Testing Philosophy & Strategy
+
+**Core Principle: Postal Code Delivery Over Input Validation**
+
+The API's primary goal is to return a postal code for any reasonable address query. We prioritize usefulness over strictness.
+
+### Intelligent Fallback Logic
+1. **EXACT MATCH** → Perfect result (city + street + house number)
+2. **STREET FALLBACK** → Remove invalid house number, return street codes
+3. **CITY FALLBACK** → Remove invalid street, return city codes
+4. **GRACEFUL FAIL** → Only for truly unusable input (severe typos)
+
+### Testing Strategy
+Every test asks: **"Would a human get a useful postal code?"**
+
+#### Test Expectations by Scenario:
+- **Wrong street in correct city** → Return city postal codes (`fallback_expected: True`)
+- **Invalid house number** → Return street postal codes
+- **Polish characters as ASCII** → Find via normalization (`"lodz" → "Łódź"`)
+- **Partial street names** → Find partial match or fallback to city
+- **Case/spacing issues** → Handle gracefully
+- **Severe typos only** → Fail gracefully (`"Warzawa" vs "Warszawa"`)
+
+#### Real Examples:
+```bash
+# Should fallback to Adamów postal codes (city level)
+"Aleje Jerozolimskie" in Adamów → Returns Adamów codes ✅
+
+# Should fallback to street level
+House "500" on Abramowskiego (range 1-19) → Returns Abramowskiego street codes ✅
+
+# Should use character normalization
+"lodz" → Finds Łódź postal codes ✅
+```
+
+### Test Implementation
+Use `comprehensive_postal_test_suite.py` with these validation patterns:
+- `fallback_expected: True, expected_city: "Kraków"` - Validate city-level fallback
+- `expected_street_contains: "Główna"` - Validate street-level fallback
+- `expected_postal_codes: ['86-300']` - Validate specific postal codes
+- `should_fail: True` - Only for severe input errors
+
+**Key Insight**: The API exists to help humans find postal codes, not to validate input perfection. Test what users actually do (typos, wrong combinations, partial info) and expect intelligent fallbacks instead of strict failures.
+
+the csv I'm using as data source doesnt have data for each street in each city, for example there are multiple streets in grudziądz but it is covered by silngle postal code, if someone searchs for street in grudziadz I dont want to throw error, I just want to return generic grudziądz record
