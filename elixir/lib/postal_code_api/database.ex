@@ -38,20 +38,25 @@ defmodule PostalCodeApi.Database do
     # Execute query using system sqlite3 command
     case System.cmd("sqlite3", [@db_path, "-header", "-json", sql_with_params]) do
       {output, 0} ->
-        case Jason.decode(output) do
-          {:ok, results} when is_list(results) ->
-            # Convert string keys to atoms for compatibility
-            formatted_results = Enum.map(results, fn result ->
-              result
-              |> Enum.map(fn {k, v} -> {String.to_atom(k), v} end)
-              |> Enum.into(%{})
-            end)
-            {:reply, {:ok, formatted_results}, state}
-          {:ok, _} ->
-            {:reply, {:ok, []}, state}
-          {:error, reason} ->
-            Logger.error("JSON decode failed: #{inspect(reason)}")
-            {:reply, {:error, reason}, state}
+        # Handle empty output (no results) - SQLite returns empty string for 0 results with -json
+        if String.trim(output) == "" do
+          {:reply, {:ok, []}, state}
+        else
+          case Jason.decode(output) do
+            {:ok, results} when is_list(results) ->
+              # Convert string keys to atoms for compatibility
+              formatted_results = Enum.map(results, fn result ->
+                result
+                |> Enum.map(fn {k, v} -> {String.to_atom(k), v} end)
+                |> Enum.into(%{})
+              end)
+              {:reply, {:ok, formatted_results}, state}
+            {:ok, _} ->
+              {:reply, {:ok, []}, state}
+            {:error, reason} ->
+              Logger.error("JSON decode failed: #{inspect(reason)}")
+              {:reply, {:error, reason}, state}
+          end
         end
       {error_output, exit_code} ->
         Logger.error("Database query failed: #{error_output} (exit code: #{exit_code})")

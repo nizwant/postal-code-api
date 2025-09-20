@@ -168,7 +168,7 @@ defmodule PostalCodeApi.PostalService do
 
             case Database.query(norm_query, norm_bind_params) do
               {:ok, norm_sql_results} ->
-                polish_results = filter_by_house_number(norm_sql_results, normalized_params[:house_number], normalized_params[:limit])
+                polish_results = filter_by_house_number(norm_sql_results, normalized_params[:house_number], normalized_params[:limit] || 100)
 
                 cond do
                   length(polish_results) > 0 ->

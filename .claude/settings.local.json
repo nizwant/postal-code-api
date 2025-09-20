@@ -8,7 +8,8 @@
       "Bash(sqlite3:*)",
       "Bash(go run:*)",
       "Bash(mix run:*)",
-      "Bash(iex:*)"
+      "Bash(iex:*)",
+      "Bash(pkill:*)"
     ],
     "deny": [],
     "ask": []
