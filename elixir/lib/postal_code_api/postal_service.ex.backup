@@ -1,6 +1,6 @@
 defmodule PostalCodeApi.PostalService do
   @moduledoc """
-  Fixed version of the postal code search service implementing the four-tier search strategy:
+  Core postal code search service implementing the four-tier search strategy:
   1. Exact search with original parameters
   2. Polish character normalization search
   3. Fallback logic (house_number → street → city-only)
@@ -11,6 +11,9 @@ defmodule PostalCodeApi.PostalService do
   alias PostalCodeApi.PolishNormalizer
   alias PostalCodeApi.HouseNumberMatcher
 
+  @doc """
+  Build a search query with the given parameters.
+  """
   def build_search_query(params, use_normalized \\ false) do
     base_query = "SELECT * FROM postal_codes WHERE 1=1"
     conditions = []
@@ -52,6 +55,9 @@ defmodule PostalCodeApi.PostalService do
     {conditions ++ [condition], bind_params ++ [param]}
   end
 
+  @doc """
+  Filter database results by house number using the range matching logic.
+  """
   def filter_by_house_number(results, nil, limit) do
     Enum.take(results, limit)
   end
@@ -84,11 +90,21 @@ defmodule PostalCodeApi.PostalService do
     |> Enum.reverse()
   end
 
+  @doc """
+  Execute fallback search logic when initial search returned no results.
+  """
   def execute_fallback_search(params, use_normalized \\ false) do
     city = params[:city]
     street = params[:street]
     house_number = params[:house_number]
+    province = params[:province]
+    county = params[:county]
+    municipality = params[:municipality]
     limit = params[:limit] || 100
+
+    fallback_used = false
+    fallback_message = ""
+    results = []
 
     # Fallback 1: Remove house_number if present
     if house_number && house_number != "" do
@@ -96,12 +112,13 @@ defmodule PostalCodeApi.PostalService do
       {query, bind_params} = build_search_query(fallback_params, use_normalized)
 
       case Database.query(query, bind_params) do
-        {:ok, db_results} when db_results != [] ->
+        {:ok, db_results} when length(db_results) > 0 ->
           results = Enum.take(db_results, limit)
+          fallback_used = true
 
           location_desc = []
-          location_desc = if street && street != "", do: location_desc ++ ["street '#{street}'"], else: location_desc
-          location_desc = if city && city != "", do: location_desc ++ ["city '#{city}'"], else: location_desc
+          if street && street != "", do: location_desc = location_desc ++ ["street '#{street}'"]
+          if city && city != "", do: location_desc = location_desc ++ ["city '#{city}'"]
 
           location_str = if length(location_desc) > 0 do
             " in " <> Enum.join(location_desc, " in ")
@@ -110,45 +127,47 @@ defmodule PostalCodeApi.PostalService do
           end
 
           fallback_message = "House number '#{house_number}' not found#{location_str}. Showing all results#{location_str}."
-          {results, true, fallback_message}
 
         _ ->
-          # Try fallback 2
-          try_street_fallback(params, use_normalized, city, street, house_number, limit)
+          :continue
       end
-    else
-      # No house number, try street fallback directly
-      try_street_fallback(params, use_normalized, city, street, house_number, limit)
     end
-  end
 
-  defp try_street_fallback(params, use_normalized, city, street, house_number, limit) do
-    # Fallback 2: Remove street if we have city + street
-    if city && city != "" && street && street != "" do
+    # Fallback 2: Remove street if still no results and we have city + street
+    if length(results) == 0 && city && city != "" && street && street != "" do
       fallback_params = params |> Map.put(:street, nil) |> Map.put(:house_number, nil)
       {query, bind_params} = build_search_query(fallback_params, use_normalized)
 
       case Database.query(query, bind_params) do
-        {:ok, db_results} when db_results != [] ->
+        {:ok, db_results} when length(db_results) > 0 ->
           results = Enum.take(db_results, limit)
-          fallback_message = if house_number && house_number != "" do
-            "Street '#{street}' with house number '#{house_number}' not found in #{city}. Showing all results for #{city}."
+          fallback_used = true
+
+          if house_number && house_number != "" do
+            fallback_message = "Street '#{street}' with house number '#{house_number}' not found in #{city}. Showing all results for #{city}."
           else
-            "Street '#{street}' not found in #{city}. Showing all results for #{city}."
+            fallback_message = "Street '#{street}' not found in #{city}. Showing all results for #{city}."
           end
-          {results, true, fallback_message}
 
         _ ->
-          {[], false, ""}
+          :continue
       end
-    else
-      {[], false, ""}
     end
+
+    {results, fallback_used, fallback_message}
   end
 
+  @doc """
+  Search postal codes with four-tier approach: exact, Polish normalization, fallbacks, then Polish fallbacks.
+  """
   def search_postal_codes(params) do
     # Pre-calculate normalized parameters once
     normalized_params = PolishNormalizer.get_normalized_search_params(params)
+
+    polish_fallback_used = false
+    search_type = "exact"
+    fallback_used = false
+    fallback_message = ""
 
     # Tier 1: Exact search with original parameters
     {query, bind_params} = build_search_query(params)
@@ -157,113 +176,94 @@ defmodule PostalCodeApi.PostalService do
       {:ok, sql_results} ->
         exact_results = filter_by_house_number(sql_results, params[:house_number], params[:limit] || 100)
 
-        cond do
-          length(exact_results) > 0 ->
-            # Tier 1 success
-            format_response(exact_results, "exact", false, false, "")
+        results = if length(exact_results) > 0 do
+          exact_results
+        else
+          # Tier 2: Polish character normalization search
+          {norm_query, norm_bind_params} = build_search_query(normalized_params, true)
 
-          true ->
-            # Tier 2: Polish character normalization search
-            {norm_query, norm_bind_params} = build_search_query(normalized_params, true)
+          case Database.query(norm_query, norm_bind_params) do
+            {:ok, norm_sql_results} ->
+              polish_results = filter_by_house_number(norm_sql_results, normalized_params[:house_number], normalized_params[:limit])
 
-            case Database.query(norm_query, norm_bind_params) do
-              {:ok, norm_sql_results} ->
-                polish_results = filter_by_house_number(norm_sql_results, normalized_params[:house_number], normalized_params[:limit])
-
-                cond do
-                  length(polish_results) > 0 ->
-                    # Tier 2 success
-                    format_response(polish_results, "polish_characters", false, true, "")
-
-                  true ->
-                    # Tier 3: Original fallback logic
-                    {fallback_results, tier3_fallback_used, tier3_message} = execute_fallback_search(params)
-
-                    cond do
-                      length(fallback_results) > 0 ->
-                        # Tier 3 success
-                        format_response(fallback_results, "exact", tier3_fallback_used, false, tier3_message)
-
-                      true ->
-                        # Tier 4: Polish normalization fallback logic
-                        {tier4_results, tier4_fallback_used, tier4_message} = execute_fallback_search(normalized_params, true)
-
-                        if length(tier4_results) > 0 do
-                          # Tier 4 success
-                          format_response(tier4_results, "polish_characters", tier4_fallback_used, true, tier4_message)
-                        else
-                          # No results found
-                          %{results: [], count: 0, search_type: "exact"}
-                        end
-                    end
-                end
-
-              {:error, _} ->
+              if length(polish_results) > 0 do
+                polish_fallback_used = true
+                search_type = "polish_characters"
+                polish_results
+              else
                 # Tier 3: Original fallback logic
                 {fallback_results, tier3_fallback_used, tier3_message} = execute_fallback_search(params)
 
-                cond do
-                  length(fallback_results) > 0 ->
-                    format_response(fallback_results, "exact", tier3_fallback_used, false, tier3_message)
+                if length(fallback_results) > 0 do
+                  fallback_used = tier3_fallback_used
+                  fallback_message = tier3_message
+                  fallback_results
+                else
+                  # Tier 4: Polish normalization fallback logic
+                  {tier4_results, tier4_fallback_used, tier4_message} = execute_fallback_search(normalized_params, true)
 
-                  true ->
-                    # Tier 4: Polish normalization fallback logic
-                    {tier4_results, tier4_fallback_used, tier4_message} = execute_fallback_search(normalized_params, true)
-
-                    if length(tier4_results) > 0 do
-                      format_response(tier4_results, "polish_characters", tier4_fallback_used, true, tier4_message)
-                    else
-                      %{results: [], count: 0, search_type: "exact"}
-                    end
+                  if length(tier4_results) > 0 do
+                    fallback_used = tier4_fallback_used
+                    fallback_message = tier4_message
+                    polish_fallback_used = true
+                    search_type = "polish_characters"
+                    tier4_results
+                  else
+                    []
+                  end
                 end
-            end
+              end
+
+            {:error, _} ->
+              []
+          end
         end
+
+        # Format results
+        postal_codes = Enum.map(results, fn row ->
+          %{
+            postal_code: Map.get(row, :postal_code),
+            city: Map.get(row, :city),
+            street: Map.get(row, :street),
+            house_numbers: Map.get(row, :house_numbers),
+            municipality: Map.get(row, :municipality),
+            county: Map.get(row, :county),
+            province: Map.get(row, :province)
+          }
+        end)
+
+        response = %{
+          results: postal_codes,
+          count: length(postal_codes),
+          search_type: search_type
+        }
+
+        response = if fallback_used do
+          response
+          |> Map.put(:message, fallback_message)
+          |> Map.put(:fallback_used, true)
+        else
+          response
+        end
+
+        response = if polish_fallback_used do
+          message = if Map.has_key?(response, :message) do
+            Map.get(response, :message) <> " Polish characters were normalized for search."
+          else
+            "Search performed with Polish character normalization."
+          end
+
+          response
+          |> Map.put(:message, message)
+          |> Map.put(:polish_normalization_used, true)
+        else
+          response
+        end
+
+        response
 
       {:error, _} ->
         %{results: [], count: 0, search_type: "exact"}
-    end
-  end
-
-  defp format_response(results, search_type, fallback_used, polish_fallback_used, fallback_message) do
-    # Format results
-    postal_codes = Enum.map(results, fn row ->
-      %{
-        postal_code: Map.get(row, :postal_code),
-        city: Map.get(row, :city),
-        street: Map.get(row, :street),
-        house_numbers: Map.get(row, :house_numbers),
-        municipality: Map.get(row, :municipality),
-        county: Map.get(row, :county),
-        province: Map.get(row, :province)
-      }
-    end)
-
-    response = %{
-      results: postal_codes,
-      count: length(postal_codes),
-      search_type: search_type
-    }
-
-    response = if fallback_used do
-      response
-      |> Map.put(:message, fallback_message)
-      |> Map.put(:fallback_used, true)
-    else
-      response
-    end
-
-    if polish_fallback_used do
-      message = if Map.has_key?(response, :message) do
-        Map.get(response, :message) <> " Polish characters were normalized for search."
-      else
-        "Search performed with Polish character normalization."
-      end
-
-      response
-      |> Map.put(:message, message)
-      |> Map.put(:polish_normalization_used, true)
-    else
-      response
     end
   end
 

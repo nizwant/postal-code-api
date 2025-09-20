@@ -6,7 +6,9 @@
       "Read(//Users/mat/Desktop/**)",
       "Bash(mkdir:*)",
       "Bash(sqlite3:*)",
-      "Bash(go run:*)"
+      "Bash(go run:*)",
+      "Bash(mix run:*)",
+      "Bash(iex:*)"
     ],
     "deny": [],
     "ask": []
