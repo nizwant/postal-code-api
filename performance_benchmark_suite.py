@@ -5,7 +5,7 @@ Advanced performance testing framework for Polish postal code APIs
 
 Features:
 - 100+ unique test scenarios with statistical analysis
-- Multi-API concurrent testing (Flask, FastAPI, Go)
+- Multi-API concurrent testing (Flask, FastAPI, Go, Elixir)
 - Real-world usage simulation with fallback testing
 - Polish character normalization performance
 - Latency percentiles (p50, p75, p90, p95, p99) and statistical measures
@@ -43,6 +43,7 @@ class APIType(Enum):
     FLASK = "flask"
     FASTAPI = "fastapi"
     GO = "go"
+    ELIXIR = "elixir"
 
 
 class TestCategory(Enum):
@@ -223,7 +224,8 @@ class PerformanceBenchmarkSuite:
         self.apis = {
             APIType.FLASK: {"name": "Flask", "port": 5001, "base_url": "http://localhost:5001"},
             APIType.FASTAPI: {"name": "FastAPI", "port": 5002, "base_url": "http://localhost:5002"},
-            APIType.GO: {"name": "Go", "port": 5003, "base_url": "http://localhost:5003"}
+            APIType.GO: {"name": "Go", "port": 5003, "base_url": "http://localhost:5003"},
+            APIType.ELIXIR: {"name": "Elixir", "port": 5004, "base_url": "http://localhost:5004"}
         }
 
     def log(self, message: str, level: str = "INFO"):
@@ -757,7 +759,15 @@ class BenchmarkReportGenerator:
         for scenario_id, api_results in scenario_groups.items():
             scenario_name = next(iter(api_results.values())).scenario.name[:40]
 
-            for api_name in ["Flask", "FastAPI", "Go"]:
+            # Get all APIs that have results (dynamic list)
+            all_api_names = set()
+            for result in self.results:
+                all_api_names.add(result.api_name)
+
+            # Sort for consistent output
+            sorted_api_names = sorted(all_api_names)
+
+            for api_name in sorted_api_names:
                 if api_name in api_results:
                     result = api_results[api_name]
                     metrics = result.metrics
@@ -810,7 +820,12 @@ class BenchmarkReportGenerator:
 
     def generate_api_winner_analysis(self) -> str:
         """Analyze which API performs best overall"""
-        api_scores = {"Flask": [], "FastAPI": [], "Go": []}
+        # Get all APIs that have results (dynamic dictionary)
+        all_api_names = set()
+        for result in self.results:
+            all_api_names.add(result.api_name)
+
+        api_scores = {api_name: [] for api_name in all_api_names}
 
         # Group by scenario for fair comparison
         scenario_groups = {}
@@ -891,7 +906,7 @@ class ConcurrentBenchmarkRunner:
     def run_concurrent_api_tests(self, scenarios: List[TestScenario], selected_apis: List[APIType] = None) -> List[APITestResult]:
         """Run tests concurrently across multiple APIs"""
         if selected_apis is None:
-            selected_apis = [APIType.FLASK, APIType.FASTAPI, APIType.GO]
+            selected_apis = [APIType.FLASK, APIType.FASTAPI, APIType.GO, APIType.ELIXIR]
 
         # Check API availability first
         available_apis = []
@@ -993,7 +1008,7 @@ def main():
     """Main function with command-line argument parsing"""
     parser = argparse.ArgumentParser(description="🚀 Comprehensive Performance Benchmark Suite for Polish Postal Code APIs")
 
-    parser.add_argument("--api", choices=["flask", "fastapi", "go"], help="Test specific API only")
+    parser.add_argument("--api", choices=["flask", "fastapi", "go", "elixir"], help="Test specific API only")
     parser.add_argument("--quick", action="store_true", help="Run quick test suite (reduced scenarios)")
     parser.add_argument("--iterations", type=int, default=20, help="Number of test iterations per scenario (default: 20)")
     parser.add_argument("--warmup", type=int, default=5, help="Number of warmup requests (default: 5)")
@@ -1013,7 +1028,7 @@ def main():
     # Determine which APIs to test
     selected_apis = []
     if args.api:
-        api_map = {"flask": APIType.FLASK, "fastapi": APIType.FASTAPI, "go": APIType.GO}
+        api_map = {"flask": APIType.FLASK, "fastapi": APIType.FASTAPI, "go": APIType.GO, "elixir": APIType.ELIXIR}
         selected_apis = [api_map[args.api]]
     elif args.port:
         # Find API by port
