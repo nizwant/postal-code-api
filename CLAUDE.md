@@ -177,6 +177,29 @@ go/
 - Compiled binary deployment
 - Memory-efficient processing
 
+### Elixir Implementation (`elixir/`)
+**High-Performance Concurrent Implementation with OTP**
+```
+elixir/
+├── lib/postal_code_api/
+│   ├── application.ex          # OTP application entry point
+│   ├── database.ex            # Database connection GenServer
+│   ├── router.ex              # HTTP routing with Plug
+│   ├── postal_service.ex      # Core search logic (four-tier strategy)
+│   ├── house_number_matcher.ex # Pattern matching engine
+│   └── polish_normalizer.ex   # Character normalization
+├── mix.exs                    # Project configuration
+├── README.md                  # Elixir-specific documentation
+└── test/                     # Unit tests
+```
+
+**Key Features**:
+- Actor model with OTP supervision trees
+- Fault tolerance and automatic restart
+- BEAM VM concurrent processing
+- Functional programming paradigms
+- Pattern matching optimization
+
 ### Frontend Implementation (`frontend/`)
 **Next.js + TypeScript User Interface**
 ```
@@ -251,6 +274,7 @@ python3 comprehensive_postal_test_suite.py
 # Test specific implementation
 python3 comprehensive_postal_test_suite.py --api flask
 python3 comprehensive_postal_test_suite.py --port 5003  # Go implementation
+python3 comprehensive_postal_test_suite.py --port 5004  # Elixir implementation
 
 # Targeted test runs
 python3 comprehensive_postal_test_suite.py --core-tests      # Essential functionality
@@ -313,6 +337,24 @@ go build -o postal-api main.go
 
 # Run tests
 go test ./...
+```
+
+### Elixir Development (Port 5004)
+```bash
+cd elixir
+
+# Install dependencies
+mix deps.get
+
+# Development server
+mix run --no-halt
+
+# Production release
+mix release
+_build/prod/rel/postal_code_api/bin/postal_code_api start
+
+# Run tests
+mix test
 ```
 
 ### Frontend Development (Port 3000)
@@ -445,6 +487,12 @@ GET /postal-codes/02-659
 - Compiled binary efficiency
 - Built-in HTTP server performance
 
+**Elixir**:
+- Actor model with lightweight processes
+- OTP supervision for fault tolerance
+- BEAM VM pattern matching optimization
+- Functional programming efficiency
+
 ## 🛠️ Code Architecture Patterns
 
 ### Shared Components
@@ -471,6 +519,17 @@ internal/routes/    → HTTP handlers
 internal/services/  → Business logic
 internal/database/  → Data access layer
 internal/utils/     → Shared utilities
+```
+
+**OTP Architecture** (Elixir):
+```
+lib/postal_code_api/
+├── application.ex          → OTP supervision tree
+├── database.ex            → GenServer for DB connection
+├── router.ex              → Plug HTTP routing
+├── postal_service.ex      → Core business logic
+├── house_number_matcher.ex → Pattern matching
+└── polish_normalizer.ex   → Character normalization
 ```
 
 ### Error Handling Standards
@@ -500,6 +559,11 @@ go build -o postal-api main.go
 ./postal-api  # Built-in production server
 ```
 
+**Elixir** (Port 5004):
+```bash
+mix run --no-halt  # Development/Production server
+```
+
 ### Monitoring & Health Checks
 All implementations must provide:
 - `GET /health` endpoint for monitoring
@@ -526,7 +590,7 @@ Before benchmarking:
 1. **Check Fallback Logic**: Most issues are in the four-tier search strategy
 2. **Validate House Number Patterns**: Complex regex patterns in `house_number_matcher.py`
 3. **Test Polish Characters**: Normalization issues are common
-4. **Cross-Reference Implementations**: Compare Flask vs FastAPI vs Go
+4. **Cross-Reference Implementations**: Compare Flask vs FastAPI vs Go vs Elixir
 
 ### When Optimizing Performance
 1. **Profile SQL Queries**: Check index usage and query plans
@@ -537,7 +601,7 @@ Before benchmarking:
 ### Code Quality Standards
 - **NEVER add comments unless explicitly requested**
 - **Follow existing patterns** in each technology implementation
-- **Maintain shared component consistency** across Flask/FastAPI/Go
+- **Maintain shared component consistency** across Flask/FastAPI/Go/Elixir
 - **Prioritize performance** while maintaining accuracy
 - **Test fallback scenarios** thoroughly
 - **Handle Polish characters** gracefully in all contexts
