@@ -440,7 +440,7 @@ def get_cities(province=None, county=None, municipality=None, prefix=None):
         )
         params.extend([f"{prefix}%", f"{normalized_prefix}%"])
 
-    query += " ORDER BY city"
+    query += " ORDER BY population DESC, city"
 
     with get_db_connection() as conn:
         cities = conn.execute(query, params).fetchall()

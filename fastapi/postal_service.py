@@ -392,7 +392,7 @@ def get_cities(province=None, county=None, municipality=None, prefix=None):
         query += " AND (city LIKE ? COLLATE NOCASE OR city_normalized LIKE ? COLLATE NOCASE)"
         params.extend([f"{prefix}%", f"{normalized_prefix}%"])
 
-    query += " ORDER BY city"
+    query += " ORDER BY population DESC, city"
 
     with get_db_connection() as conn:
         cities = conn.execute(query, params).fetchall()

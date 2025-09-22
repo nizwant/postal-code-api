@@ -439,7 +439,7 @@ defmodule PostalCodeApi.PostalService do
       {conditions, bind_params}
     end
 
-    query = base_query <> " " <> Enum.join(conditions, " ") <> " ORDER BY city"
+    query = base_query <> " " <> Enum.join(conditions, " ") <> " ORDER BY population DESC, city"
 
     case Database.query(query, bind_params) do
       {:ok, cities} ->

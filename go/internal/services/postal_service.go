@@ -574,7 +574,7 @@ func GetCities(province, county, municipality, prefix *string) (*CityResponse, e
 		args = append(args, *prefix+"%", normalizedPrefix+"%")
 	}
 
-	query += " ORDER BY city"
+	query += " ORDER BY population DESC, city"
 
 	rows, err := db.Query(query, args...)
 	if err != nil {

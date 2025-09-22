@@ -124,9 +124,80 @@ def create_normalized_database():
     # Read CSV file
     csv_path = "postal_codes_poland.csv"
     print(f"Reading CSV file: {csv_path}")
-    df = pd.read_csv(csv_path)
+    postal_codes = pd.read_csv(csv_path)
 
-    print(f"Original records: {len(df)}")
+    print(f"Original postal codes records: {len(postal_codes)}")
+
+    # Load and merge population data
+    print("Loading population data...")
+    try:
+        statistics = pd.read_csv("population_data.csv")
+        print(f"Population data records: {len(statistics)}")
+
+        # Apply the user's city normalization logic
+        cities = [
+            "Warszawa",
+            "Łódź",
+            "Kraków",
+            "Wrocław",
+            "Poznań",
+            "Jelenia Góra",
+            "Bieruń",
+            "Zawiercie",
+            "Będzin",
+            "Mikołów",
+            "Orzesze",
+            "Kędzierzyn-Koźle",
+        ]
+        postal_codes["city_clean"] = postal_codes["Miejscowość"].str.strip().str.title()
+        postal_codes.loc[postal_codes["Gmina"].isin(cities), "city_clean"] = postal_codes["Gmina"]
+
+        postal_codes.loc[
+            (postal_codes["Gmina"] == "Józefów") & (postal_codes["Powiat"] == "otwocki"),
+            "city_clean",
+        ] = "Józefów"
+
+        postal_codes.loc[
+            postal_codes["Miejscowość"] == "Kraśnik (Kraśnik Fabryczny)",
+            "city_clean",
+        ] = "Kraśnik"
+
+        postal_codes.loc[
+            postal_codes["Miejscowość"] == "Darłowo (Darłówko)",
+            "city_clean",
+        ] = "Darłowo"
+
+        postal_codes.loc[
+            postal_codes["Miejscowość"] == "Police (Jasienica)",
+            "city_clean",
+        ] = "Police"
+
+        postal_codes.loc[
+            postal_codes["Miejscowość"].isin(
+                ["Łaziska Górne (Łaziska Średnie)", "Łaziska Górne (Łaziska Dolne)"]
+            ),
+            "city_clean",
+        ] = "Łaziska Górne"
+
+        statistics["city_clean"] = statistics["Miasto"].str.strip().str.title()
+
+        # Merge population data
+        df = postal_codes.merge(
+            statistics, on=["city_clean", "Powiat", "Województwo"], how="left"
+        )
+
+        # Fill missing population with 1 (as per user's logic)
+        df["population"] = df["Liczba ludności (01.01.2021)"].fillna(1).astype(int)
+
+        print(f"Records after population merge: {len(df)}")
+        print(f"Records with population > 1: {len(df[df['population'] > 1])}")
+
+    except FileNotFoundError:
+        print("Warning: population_data.csv not found, using default population of 1")
+        df = postal_codes.copy()
+        df["population"] = 1
+
+    print(f"Final records to process: {len(df)}")
 
     # Create SQLite database
     db_path = "postal_codes.db"
@@ -139,7 +210,7 @@ def create_normalized_database():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # Create table with normalized columns added
+    # Create table with normalized columns and population added
     cursor.execute(
         """
         CREATE TABLE postal_codes (
@@ -152,7 +223,8 @@ def create_normalized_database():
             county TEXT,
             province TEXT,
             city_normalized TEXT,
-            street_normalized TEXT
+            street_normalized TEXT,
+            population INTEGER
         )
     """
     )
@@ -183,6 +255,9 @@ def create_normalized_database():
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_street_normalized ON postal_codes(street_normalized COLLATE NOCASE)"
     )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_population ON postal_codes(population DESC)"
+    )
 
     # Counters for tracking
     original_with_house_numbers = 0
@@ -201,6 +276,7 @@ def create_normalized_database():
             "municipality": row["Gmina"],
             "county": row["Powiat"],
             "province": row["Województwo"],
+            "population": row["population"],
         }
 
         # Handle house numbers
@@ -211,8 +287,8 @@ def create_normalized_database():
             cursor.execute(
                 """
                 INSERT INTO postal_codes
-                (postal_code, city, street, house_numbers, municipality, county, province, city_normalized, street_normalized)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (postal_code, city, street, house_numbers, municipality, county, province, city_normalized, street_normalized, population)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     base_record["postal_code"],
@@ -224,6 +300,7 @@ def create_normalized_database():
                     base_record["province"],
                     normalize_polish_text(base_record["city"]),
                     normalize_polish_text(base_record["street"]),
+                    base_record["population"],
                 ),
             )
             records_without_house_numbers += 1
@@ -245,8 +322,8 @@ def create_normalized_database():
                     cursor.execute(
                         """
                         INSERT INTO postal_codes
-                        (postal_code, city, street, house_numbers, municipality, county, province, city_normalized, street_normalized)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        (postal_code, city, street, house_numbers, municipality, county, province, city_normalized, street_normalized, population)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                         (
                             base_record["postal_code"],
@@ -258,6 +335,7 @@ def create_normalized_database():
                             base_record["province"],
                             normalize_polish_text(base_record["city"]),
                             normalize_polish_text(base_record["street"]),
+                            base_record["population"],
                         ),
                     )
                     total_normalized_records += 1
