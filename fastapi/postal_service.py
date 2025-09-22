@@ -18,7 +18,8 @@ def build_search_query(
     params = []
 
     # Choose column names based on whether we're using normalized search
-    city_col = "city_normalized" if use_normalized else "city"
+    # Always use city_clean for filtering (not original city)
+    city_col = "city_normalized" if use_normalized else "city_clean"
     street_col = "street_normalized" if use_normalized else "street"
 
     if city:
@@ -413,7 +414,7 @@ def get_streets(city=None, province=None, county=None, municipality=None, prefix
     params = []
 
     if city:
-        query += " AND city = ? COLLATE NOCASE"
+        query += " AND city_clean = ? COLLATE NOCASE"
         params.append(city)
 
     if province:

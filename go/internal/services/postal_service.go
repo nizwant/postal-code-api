@@ -80,7 +80,8 @@ func buildSearchQuery(params utils.SearchParams, useNormalized bool) (string, []
 	var args []interface{}
 
 	// Choose column names based on whether we're using normalized search
-	cityCol := "city"
+	// Always use city_clean for filtering (not original city)
+	cityCol := "city_clean"
 	streetCol := "street"
 	if useNormalized {
 		cityCol = "city_normalized"
@@ -608,7 +609,7 @@ func GetStreets(city, province, county, municipality, prefix *string) (*StreetRe
 	var args []interface{}
 
 	if city != nil && *city != "" {
-		query += " AND city = ? COLLATE NOCASE"
+		query += " AND city_clean = ? COLLATE NOCASE"
 		args = append(args, *city)
 	}
 

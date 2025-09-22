@@ -17,7 +17,7 @@ defmodule PostalCodeApi.PostalService do
     bind_params = []
 
     # Choose column names based on whether we're using normalized search
-    city_col = if use_normalized, do: "city_normalized", else: "city"
+    city_col = if use_normalized, do: "city_normalized", else: "city_clean"
     street_col = if use_normalized, do: "street_normalized", else: "street"
 
     {conditions, bind_params} = add_condition(conditions, bind_params, params[:city], "#{city_col} LIKE ? COLLATE NOCASE", fn city -> "#{city}%" end)
@@ -465,7 +465,7 @@ defmodule PostalCodeApi.PostalService do
     conditions = []
     bind_params = []
 
-    {conditions, bind_params} = add_condition(conditions, bind_params, city, "city = ? COLLATE NOCASE")
+    {conditions, bind_params} = add_condition(conditions, bind_params, city, "city_clean = ? COLLATE NOCASE")
     {conditions, bind_params} = add_condition(conditions, bind_params, province, "province = ? COLLATE NOCASE")
     {conditions, bind_params} = add_condition(conditions, bind_params, county, "county = ? COLLATE NOCASE")
     {conditions, bind_params} = add_condition(conditions, bind_params, municipality, "municipality = ? COLLATE NOCASE")
