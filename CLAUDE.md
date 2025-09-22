@@ -20,8 +20,10 @@ The API exists to help humans find postal codes, not to validate input perfectio
 
 ### Source Data Transformation
 - **Original**: `postal_codes_poland.csv` (7.1MB, 117,679 records)
-- **Normalized**: `postal_codes.db` (31MB, 122,765 records)
+- **Population**: `population_data.csv` (1,013 records from GUS statistical data)
+- **Normalized**: `postal_codes.db` (31MB, 122,765 records with population data)
 - **Growth**: 1.04x expansion due to house number range normalization
+- **Population Coverage**: 61,751 records (52.4%) have real population data
 
 ### Database Schema
 ```sql
@@ -29,21 +31,63 @@ CREATE TABLE postal_codes (
     id INTEGER PRIMARY KEY,
     postal_code TEXT NOT NULL,
     city TEXT,
-    city_normalized TEXT,         -- ASCII equivalent for search
     street TEXT,
-    street_normalized TEXT,       -- ASCII equivalent for search
     house_numbers TEXT,           -- Single range pattern (normalized)
     municipality TEXT,
     county TEXT,
-    province TEXT
+    province TEXT,
+    city_normalized TEXT,         -- ASCII equivalent of city_clean for search
+    street_normalized TEXT,       -- ASCII equivalent for search
+    city_clean TEXT,              -- Consolidated city names for API responses
+    population INTEGER            -- Population data for city ordering
 );
 ```
 
+**Key Schema Features**:
+- **`city_clean` column**: Consolidated city names (e.g., "Warszawa" instead of "Warszawa (Bemowo)")
+- **`population` column**: Contains city population data for ordering cities by size
+- **`city_normalized`**: Based on `city_clean` for Polish character search compatibility
+- **Performance indexes**: All searchable fields including `population DESC` and `city_clean`
+
 ### Key Normalization Process (`create_db.py`)
-1. **House Number Range Splitting**: `"270-336(p), 283-335(n)"` → separate records for `"270-336(p)"` and `"283-335(n)"`
-2. **Polish Character Normalization**: `"Łódź"` → `"Lodz"` in `_normalized` columns
-3. **Full Indexing**: All searchable fields indexed for performance
-4. **Performance Result**: 0.01ms per house number pattern evaluation
+1. **Population Data Integration**: Merges `population_data.csv` with postal codes using custom city mapping logic
+2. **City Clean Mapping**: Applies sophisticated city normalization rules:
+   - Major cities (`Warszawa`, `Łódź`, `Kraków`, etc.) use `Gmina` instead of `Miejscowość`
+   - Special case handling for city districts (e.g., `"Kraśnik (Kraśnik Fabryczny)"` → `"Kraśnik"`)
+   - District consolidation for major metropolitan areas
+3. **House Number Range Splitting**: `"270-336(p), 283-335(n)"` → separate records for `"270-336(p)"` and `"283-335(n)"`
+4. **Polish Character Normalization**: `city_normalized` based on `city_clean` (not raw city), `"Łódź"` → `"Lodz"`
+5. **Performance Indexing**: All searchable fields indexed including `population DESC` for city ordering
+6. **Results**: 61,751 records with real population data, 0.01ms per house number pattern evaluation
+
+## 📊 Population Data Integration
+
+### City Mapping Logic
+The system uses sophisticated city mapping before merging population data:
+
+```python
+# Major cities use Gmina instead of Miejscowość for consistency
+cities = ["Warszawa", "Łódź", "Kraków", "Wrocław", "Poznań", ...]
+postal_codes.loc[postal_codes["Gmina"].isin(cities), "city_clean"] = postal_codes["Gmina"]
+
+# Special cases for city districts and naming variations
+postal_codes.loc[
+    postal_codes["Miejscowość"] == "Kraśnik (Kraśnik Fabryczny)", "city_clean"
+] = "Kraśnik"
+```
+
+### Population Data Merge
+- **Source**: `population_data.csv` (1,013 records from GUS statistical data)
+- **Merge Strategy**: Match on `["city_clean", "Powiat", "Województwo"]`
+- **Fallback**: Cities without population data default to `population = 1`
+- **Result**: 61,751 records (52.4%) have real population data from official statistics
+
+### City Normalization Strategy
+**`city_normalized` is based on `city_clean`, NOT raw city name**:
+- **Before**: `"Łódź (Łódź-Bałuty)"` → `"Lodz (Lodz-Baluty)"` (messy)
+- **After**: `"Łódź (Łódź-Bałuty)"` → `"Lodz"` (clean, via city_clean)
+
+This ensures Polish character search works effectively with the consolidated city naming.
 
 ## 🔍 Core Search Engine - Four-Tier Strategy
 
@@ -391,10 +435,18 @@ GET /postal-codes/02-659
 - `GET /locations/provinces?prefix=X`
 - `GET /locations/counties?province=X&prefix=Y`
 - `GET /locations/municipalities?province=X&county=Y&prefix=Z`
-- `GET /locations/cities?province=X&county=Y&municipality=Z&prefix=W`
+- `GET /locations/cities?province=X&county=Y&municipality=Z&prefix=W` (⭐ **Population-ordered**)
 
 **Street Discovery**:
 - `GET /locations/streets?city=X&prefix=Y`
+
+**Population-Based City Ordering with Consolidation**:
+Cities are returned as consolidated names ordered by `population DESC, city_clean ASC`:
+- **Warszawa** (1.8M) appears as single entry (not individual districts)
+- **Kraków** (770k) appears as single entry
+- **Łódź** (680k) appears as single entry
+- Uses `city_clean` for consolidated city names instead of raw district names
+- Hybrid search supports both Polish characters ("Łódź") and ASCII ("Lodz")
 
 ### Response Format Standards
 
@@ -498,9 +550,11 @@ GET /postal-codes/02-659
 ### Shared Components
 These components should be identical across implementations:
 - **House Number Matching Logic**: Core algorithm consistency
-- **Polish Character Normalization**: Identical character mapping
+- **Polish Character Normalization**: Identical character mapping (`city_clean` → `city_normalized`)
+- **Cities API Logic**: All `get_cities()` functions use `SELECT DISTINCT city_clean` with `ORDER BY population DESC, city_clean`
+- **Hybrid Search**: Prefix matching uses both `city_clean` and `city_normalized` for Polish character support
 - **Fallback Message Templates**: Consistent user experience
-- **Database Schema**: Identical table structure and indexes
+- **Database Schema**: Identical table structure and indexes including `city_clean` and `population` columns
 
 ### Technology-Specific Patterns
 
@@ -589,8 +643,9 @@ Before benchmarking:
 ### When Debugging Issues
 1. **Check Fallback Logic**: Most issues are in the four-tier search strategy
 2. **Validate House Number Patterns**: Complex regex patterns in `house_number_matcher.py`
-3. **Test Polish Characters**: Normalization issues are common
-4. **Cross-Reference Implementations**: Compare Flask vs FastAPI vs Go vs Elixir
+3. **Test Polish Characters**: Normalization issues are common (remember `city_normalized` is based on `city_clean`)
+4. **Population Data**: Ensure `population_data.csv` exists when regenerating database
+5. **Cross-Reference Implementations**: Compare Flask vs FastAPI vs Go vs Elixir
 
 ### When Optimizing Performance
 1. **Profile SQL Queries**: Check index usage and query plans

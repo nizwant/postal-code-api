@@ -210,7 +210,7 @@ def create_normalized_database():
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # Create table with normalized columns and population added
+    # Create table with normalized columns, city_clean, and population added
     cursor.execute(
         """
         CREATE TABLE postal_codes (
@@ -224,6 +224,7 @@ def create_normalized_database():
             province TEXT,
             city_normalized TEXT,
             street_normalized TEXT,
+            city_clean TEXT,
             population INTEGER
         )
     """
@@ -258,6 +259,9 @@ def create_normalized_database():
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_population ON postal_codes(population DESC)"
     )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_city_clean ON postal_codes(city_clean COLLATE NOCASE)"
+    )
 
     # Counters for tracking
     original_with_house_numbers = 0
@@ -288,8 +292,8 @@ def create_normalized_database():
             cursor.execute(
                 """
                 INSERT INTO postal_codes
-                (postal_code, city, street, house_numbers, municipality, county, province, city_normalized, street_normalized, population)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (postal_code, city, street, house_numbers, municipality, county, province, city_normalized, street_normalized, city_clean, population)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     base_record["postal_code"],
@@ -301,6 +305,7 @@ def create_normalized_database():
                     base_record["province"],
                     normalize_polish_text(base_record["city_clean"]),
                     normalize_polish_text(base_record["street"]),
+                    base_record["city_clean"],
                     base_record["population"],
                 ),
             )
@@ -323,8 +328,8 @@ def create_normalized_database():
                     cursor.execute(
                         """
                         INSERT INTO postal_codes
-                        (postal_code, city, street, house_numbers, municipality, county, province, city_normalized, street_normalized, population)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        (postal_code, city, street, house_numbers, municipality, county, province, city_normalized, street_normalized, city_clean, population)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                         (
                             base_record["postal_code"],
@@ -336,6 +341,7 @@ def create_normalized_database():
                             base_record["province"],
                             normalize_polish_text(base_record["city_clean"]),
                             normalize_polish_text(base_record["street"]),
+                            base_record["city_clean"],
                             base_record["population"],
                         ),
                     )

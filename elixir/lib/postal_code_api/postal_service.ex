@@ -423,7 +423,7 @@ defmodule PostalCodeApi.PostalService do
   Get cities, optionally filtered by province, county, municipality, and/or prefix.
   """
   def get_cities(province \\ nil, county \\ nil, municipality \\ nil, prefix \\ nil) do
-    base_query = "SELECT DISTINCT city FROM postal_codes WHERE city IS NOT NULL"
+    base_query = "SELECT DISTINCT city_clean FROM postal_codes WHERE city_clean IS NOT NULL"
     conditions = []
     bind_params = []
 
@@ -433,18 +433,18 @@ defmodule PostalCodeApi.PostalService do
 
     {conditions, bind_params} = if prefix do
       normalized_prefix = PolishNormalizer.normalize_polish_text(prefix)
-      condition = "AND (city LIKE ? COLLATE NOCASE OR city_normalized LIKE ? COLLATE NOCASE)"
+      condition = "AND (city_clean LIKE ? COLLATE NOCASE OR city_normalized LIKE ? COLLATE NOCASE)"
       {conditions ++ [condition], bind_params ++ ["#{prefix}%", "#{normalized_prefix}%"]}
     else
       {conditions, bind_params}
     end
 
-    query = base_query <> " " <> Enum.join(conditions, " ") <> " ORDER BY population DESC, city"
+    query = base_query <> " " <> Enum.join(conditions, " ") <> " ORDER BY population DESC, city_clean"
 
     case Database.query(query, bind_params) do
       {:ok, cities} ->
         %{
-          cities: Enum.map(cities, &Map.get(&1, :city)),
+          cities: Enum.map(cities, &Map.get(&1, :city_clean)),
           count: length(cities),
           filtered_by_province: province,
           filtered_by_county: county,

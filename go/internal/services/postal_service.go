@@ -550,7 +550,7 @@ func GetMunicipalities(province, county, prefix *string) (*MunicipalityResponse,
 // GetCities gets cities, optionally filtered by province, county, municipality, and/or prefix
 func GetCities(province, county, municipality, prefix *string) (*CityResponse, error) {
 	db := database.GetDB()
-	query := "SELECT DISTINCT city FROM postal_codes WHERE city IS NOT NULL"
+	query := "SELECT DISTINCT city_clean FROM postal_codes WHERE city_clean IS NOT NULL"
 	var args []interface{}
 
 	if province != nil && *province != "" {
@@ -570,11 +570,11 @@ func GetCities(province, county, municipality, prefix *string) (*CityResponse, e
 
 	if prefix != nil && *prefix != "" {
 		normalizedPrefix := utils.NormalizePolishText(*prefix)
-		query += " AND (city LIKE ? COLLATE NOCASE OR city_normalized LIKE ? COLLATE NOCASE)"
+		query += " AND (city_clean LIKE ? COLLATE NOCASE OR city_normalized LIKE ? COLLATE NOCASE)"
 		args = append(args, *prefix+"%", normalizedPrefix+"%")
 	}
 
-	query += " ORDER BY population DESC, city"
+	query += " ORDER BY population DESC, city_clean"
 
 	rows, err := db.Query(query, args...)
 	if err != nil {

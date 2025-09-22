@@ -370,7 +370,7 @@ def get_municipalities(province=None, county=None, prefix=None):
 
 def get_cities(province=None, county=None, municipality=None, prefix=None):
     """Get cities, optionally filtered by province, county, municipality, and/or prefix."""
-    query = "SELECT DISTINCT city FROM postal_codes WHERE city IS NOT NULL"
+    query = "SELECT DISTINCT city_clean FROM postal_codes WHERE city_clean IS NOT NULL"
     params = []
 
     if province:
@@ -386,19 +386,19 @@ def get_cities(province=None, county=None, municipality=None, prefix=None):
         params.append(municipality)
 
     if prefix:
-        # Use both original and normalized city columns for prefix matching
+        # Use both city_clean and city_normalized for prefix matching (supports Polish chars)
         from polish_normalizer import normalize_polish_text
         normalized_prefix = normalize_polish_text(prefix)
-        query += " AND (city LIKE ? COLLATE NOCASE OR city_normalized LIKE ? COLLATE NOCASE)"
+        query += " AND (city_clean LIKE ? COLLATE NOCASE OR city_normalized LIKE ? COLLATE NOCASE)"
         params.extend([f"{prefix}%", f"{normalized_prefix}%"])
 
-    query += " ORDER BY population DESC, city"
+    query += " ORDER BY population DESC, city_clean"
 
     with get_db_connection() as conn:
         cities = conn.execute(query, params).fetchall()
 
     return {
-        "cities": [row["city"] for row in cities],
+        "cities": [row["city_clean"] for row in cities],
         "count": len(cities),
         "filtered_by_province": province if province else None,
         "filtered_by_county": county if county else None,
