@@ -25,26 +25,25 @@ def normalize_polish_text(text):
 
     POLISH_CHAR_MAP = {
         # Lowercase Polish characters
-        'ą': 'a',
-        'ć': 'c',
-        'ę': 'e',
-        'ł': 'l',
-        'ń': 'n',
-        'ó': 'o',
-        'ś': 's',
-        'ź': 'z',
-        'ż': 'z',
-
+        "ą": "a",
+        "ć": "c",
+        "ę": "e",
+        "ł": "l",
+        "ń": "n",
+        "ó": "o",
+        "ś": "s",
+        "ź": "z",
+        "ż": "z",
         # Uppercase Polish characters
-        'Ą': 'A',
-        'Ć': 'C',
-        'Ę': 'E',
-        'Ł': 'L',
-        'Ń': 'N',
-        'Ó': 'O',
-        'Ś': 'S',
-        'Ź': 'Z',
-        'Ż': 'Z'
+        "Ą": "A",
+        "Ć": "C",
+        "Ę": "E",
+        "Ł": "L",
+        "Ń": "N",
+        "Ó": "O",
+        "Ś": "S",
+        "Ź": "Z",
+        "Ż": "Z",
     }
 
     result = text
@@ -122,7 +121,7 @@ def create_normalized_database():
     """Create the normalized postal codes database."""
 
     # Read CSV file
-    csv_path = "postal_codes_poland.csv"
+    csv_path = "../postal_codes_poland.csv"
     print(f"Reading CSV file: {csv_path}")
     postal_codes = pd.read_csv(csv_path)
 
@@ -150,10 +149,13 @@ def create_normalized_database():
             "Kędzierzyn-Koźle",
         ]
         postal_codes["city_clean"] = postal_codes["Miejscowość"].str.strip().str.title()
-        postal_codes.loc[postal_codes["Gmina"].isin(cities), "city_clean"] = postal_codes["Gmina"]
+        postal_codes.loc[postal_codes["Gmina"].isin(cities), "city_clean"] = (
+            postal_codes["Gmina"]
+        )
 
         postal_codes.loc[
-            (postal_codes["Gmina"] == "Józefów") & (postal_codes["Powiat"] == "otwocki"),
+            (postal_codes["Gmina"] == "Józefów")
+            & (postal_codes["Powiat"] == "otwocki"),
             "city_clean",
         ] = "Józefów"
 
@@ -200,7 +202,7 @@ def create_normalized_database():
     print(f"Final records to process: {len(df)}")
 
     # Create SQLite database
-    db_path = "postal_codes.db"
+    db_path = "../postal_codes.db"
 
     # Remove existing database if it exists
     if os.path.exists(db_path):
@@ -234,7 +236,9 @@ def create_normalized_database():
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_postal_code ON postal_codes(postal_code)"
     )
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_city ON postal_codes(city COLLATE NOCASE)")
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_city ON postal_codes(city COLLATE NOCASE)"
+    )
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_street ON postal_codes(street COLLATE NOCASE)"
     )
