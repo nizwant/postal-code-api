@@ -9,6 +9,7 @@ import (
 	"postal-api/internal/database"
 	"postal-api/internal/routes"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -28,6 +29,13 @@ func main() {
 	// Create Gin router with logging
 	gin.SetMode(gin.DebugMode)
 	router := gin.Default()
+
+	// Configure CORS to allow requests from the frontend
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"http://localhost:3000"}
+	config.AllowMethods = []string{"GET", "POST", "OPTIONS"}
+	config.AllowHeaders = []string{"*"}
+	router.Use(cors.New(config))
 
 	// Add logging middleware for errors
 	router.Use(gin.Logger(), gin.Recovery())

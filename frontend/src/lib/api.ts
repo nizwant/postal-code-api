@@ -17,6 +17,20 @@ export class ApiClient {
     this.port = new URL(baseUrl).port;
   }
 
+  private getApiUrl(path: string): string {
+    // Check if direct API communication is enabled
+    const useDirectApi = process.env.NODE_ENV === 'production' ||
+                         process.env.NEXT_PUBLIC_DIRECT_API === 'true';
+
+    if (useDirectApi && typeof window !== 'undefined') {
+      // Direct API communication (bypasses proxy)
+      return `${this.baseUrl}/${path}`;
+    }
+
+    // Fallback to proxy for CORS handling
+    return this.getProxyUrl(path);
+  }
+
   private getProxyUrl(path: string): string {
     // Use proxy in browser environment to handle CORS
     if (typeof window !== 'undefined') {
@@ -46,7 +60,7 @@ export class ApiClient {
   async healthCheck(): Promise<{ status: string; responseTime: number }> {
     const startTime = Date.now();
     try {
-      const response = await this.fetchWithTimeout(this.getProxyUrl('health'));
+      const response = await this.fetchWithTimeout(this.getApiUrl('health'));
       const responseTime = Date.now() - startTime;
 
       if (response.ok) {
@@ -84,7 +98,7 @@ export class ApiClient {
 
     try {
       const response = await this.fetchWithTimeout(
-        this.getProxyUrl(`postal-codes?${searchParams.toString()}`)
+        this.getApiUrl(`postal-codes?${searchParams.toString()}`)
       );
 
       if (!response.ok) {
@@ -109,7 +123,7 @@ export class ApiClient {
   async getPostalCodeDetails(postalCode: string): Promise<PostalCodeSearchResponse> {
     const startTime = Date.now();
     try {
-      const response = await this.fetchWithTimeout(this.getProxyUrl(`postal-codes/${postalCode}`));
+      const response = await this.fetchWithTimeout(this.getApiUrl(`postal-codes/${postalCode}`));
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -141,7 +155,7 @@ export class ApiClient {
 
     try {
       const response = await this.fetchWithTimeout(
-        this.getProxyUrl(`locations/provinces?${searchParams.toString()}`)
+        this.getApiUrl(`locations/provinces?${searchParams.toString()}`)
       );
 
       if (!response.ok) {
@@ -161,7 +175,7 @@ export class ApiClient {
 
     try {
       const response = await this.fetchWithTimeout(
-        this.getProxyUrl(`locations/counties?${searchParams.toString()}`)
+        this.getApiUrl(`locations/counties?${searchParams.toString()}`)
       );
 
       if (!response.ok) {
@@ -182,7 +196,7 @@ export class ApiClient {
 
     try {
       const response = await this.fetchWithTimeout(
-        this.getProxyUrl(`locations/municipalities?${searchParams.toString()}`)
+        this.getApiUrl(`locations/municipalities?${searchParams.toString()}`)
       );
 
       if (!response.ok) {
@@ -204,7 +218,7 @@ export class ApiClient {
 
     try {
       const response = await this.fetchWithTimeout(
-        this.getProxyUrl(`locations/cities?${searchParams.toString()}`)
+        this.getApiUrl(`locations/cities?${searchParams.toString()}`)
       );
 
       if (!response.ok) {
@@ -227,7 +241,7 @@ export class ApiClient {
 
     try {
       const response = await this.fetchWithTimeout(
-        this.getProxyUrl(`locations/streets?${searchParams.toString()}`)
+        this.getApiUrl(`locations/streets?${searchParams.toString()}`)
       );
 
       if (!response.ok) {

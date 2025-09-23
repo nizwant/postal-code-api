@@ -8,6 +8,13 @@ defmodule PostalCodeApi.Router do
 
   plug :match
   plug Plug.Parsers, parsers: [:json], json_decoder: Jason
+
+  # Configure CORS to allow requests from the frontend
+  plug Corsica,
+    origins: ["http://localhost:3000"],
+    allow_methods: ["GET", "POST", "OPTIONS"],
+    allow_headers: ["content-type"]
+
   plug :dispatch
 
   @doc """

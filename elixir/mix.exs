@@ -21,7 +21,8 @@ defmodule PostalCodeApi.MixProject do
   defp deps do
     [
       {:plug_cowboy, "~> 2.0"},
-      {:jason, "~> 1.4"}
+      {:jason, "~> 1.4"},
+      {:corsica, "~> 2.0"}
     ]
   end
 end

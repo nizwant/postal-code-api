@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from database import check_database_exists
 from routes import router
 import sys
@@ -7,6 +8,14 @@ app = FastAPI(
     title="Polish Postal Code API (FastAPI)",
     description="FastAPI implementation for Polish postal code lookups with sophisticated house number matching",
     version="1.0.0"
+)
+
+# Configure CORS to allow requests from the frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
 )
 
 # Include routes
