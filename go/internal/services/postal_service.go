@@ -187,8 +187,9 @@ func executeFallbackSearch(params utils.SearchParams, useNormalized bool) ([]dat
 		for rows.Next() {
 			var pc database.PostalCode
 			var id int
-			var cityNormalized, streetNormalized *string
-			err := rows.Scan(&id, &pc.PostalCode, &pc.City, &pc.Street, &pc.HouseNumbers, &pc.Municipality, &pc.County, &pc.Province, &cityNormalized, &streetNormalized)
+			var cityNormalized, streetNormalized, cityClean interface{}
+			var population interface{}
+			err := rows.Scan(&id, &pc.PostalCode, &pc.City, &pc.Street, &pc.HouseNumbers, &pc.Municipality, &pc.County, &pc.Province, &cityNormalized, &streetNormalized, &cityClean, &population)
 			if err != nil {
 				return nil, false, "", fmt.Errorf("failed to scan fallback row: %w", err)
 			}
@@ -228,8 +229,9 @@ func executeFallbackSearch(params utils.SearchParams, useNormalized bool) ([]dat
 		for rows.Next() {
 			var pc database.PostalCode
 			var id int
-			var cityNormalized, streetNormalized *string
-			err := rows.Scan(&id, &pc.PostalCode, &pc.City, &pc.Street, &pc.HouseNumbers, &pc.Municipality, &pc.County, &pc.Province, &cityNormalized, &streetNormalized)
+			var cityNormalized, streetNormalized, cityClean interface{}
+			var population interface{}
+			err := rows.Scan(&id, &pc.PostalCode, &pc.City, &pc.Street, &pc.HouseNumbers, &pc.Municipality, &pc.County, &pc.Province, &cityNormalized, &streetNormalized, &cityClean, &population)
 			if err != nil {
 				return nil, false, "", fmt.Errorf("failed to scan second fallback row: %w", err)
 			}
@@ -272,8 +274,9 @@ func SearchPostalCodes(params utils.SearchParams) (*SearchResponse, error) {
 	for rows.Next() {
 		var pc database.PostalCode
 		var id int
-		var cityNormalized, streetNormalized interface{}
-		err := rows.Scan(&id, &pc.PostalCode, &pc.City, &pc.Street, &pc.HouseNumbers, &pc.Municipality, &pc.County, &pc.Province, &cityNormalized, &streetNormalized)
+		var cityNormalized, streetNormalized, cityClean interface{}
+		var population interface{}
+		err := rows.Scan(&id, &pc.PostalCode, &pc.City, &pc.Street, &pc.HouseNumbers, &pc.Municipality, &pc.County, &pc.Province, &cityNormalized, &streetNormalized, &cityClean, &population)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
@@ -298,8 +301,9 @@ func SearchPostalCodes(params utils.SearchParams) (*SearchResponse, error) {
 		for rows.Next() {
 			var pc database.PostalCode
 			var id int
-			var cityNormalized, streetNormalized *string
-			err := rows.Scan(&id, &pc.PostalCode, &pc.City, &pc.Street, &pc.HouseNumbers, &pc.Municipality, &pc.County, &pc.Province, &cityNormalized, &streetNormalized)
+			var cityNormalized, streetNormalized, cityClean interface{}
+			var population interface{}
+			err := rows.Scan(&id, &pc.PostalCode, &pc.City, &pc.Street, &pc.HouseNumbers, &pc.Municipality, &pc.County, &pc.Province, &cityNormalized, &streetNormalized, &cityClean, &population)
 			if err != nil {
 				return nil, fmt.Errorf("failed to scan normalized row: %w", err)
 			}
@@ -378,8 +382,9 @@ func GetPostalCodeByCode(postalCode string) (*SearchResponse, error) {
 	for rows.Next() {
 		var pc database.PostalCode
 		var id int
-		var cityNormalized, streetNormalized interface{}
-		err := rows.Scan(&id, &pc.PostalCode, &pc.City, &pc.Street, &pc.HouseNumbers, &pc.Municipality, &pc.County, &pc.Province, &cityNormalized, &streetNormalized)
+		var cityNormalized, streetNormalized, cityClean interface{}
+		var population interface{}
+		err := rows.Scan(&id, &pc.PostalCode, &pc.City, &pc.Street, &pc.HouseNumbers, &pc.Municipality, &pc.County, &pc.Province, &cityNormalized, &streetNormalized, &cityClean, &population)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
