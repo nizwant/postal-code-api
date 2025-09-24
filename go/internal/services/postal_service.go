@@ -576,8 +576,8 @@ func GetCities(province, county, municipality, prefix *string) (*CityResponse, e
 
 	if prefix != nil && *prefix != "" {
 		normalizedPrefix := utils.NormalizePolishText(*prefix)
-		query += " AND (city_clean LIKE ? COLLATE NOCASE OR city_normalized LIKE ? COLLATE NOCASE)"
-		args = append(args, *prefix+"%", normalizedPrefix+"%")
+		query += " AND city_normalized LIKE ? COLLATE NOCASE"
+		args = append(args, normalizedPrefix+"%")
 	}
 
 	query += " ORDER BY population DESC, city_clean"
@@ -614,8 +614,9 @@ func GetStreets(city, province, county, municipality, prefix *string) (*StreetRe
 	var args []interface{}
 
 	if city != nil && *city != "" {
-		query += " AND city_clean = ? COLLATE NOCASE"
-		args = append(args, *city)
+		normalizedCity := utils.NormalizePolishText(*city)
+		query += " AND city_normalized = ? COLLATE NOCASE"
+		args = append(args, normalizedCity)
 	}
 
 	if province != nil && *province != "" {
@@ -635,8 +636,8 @@ func GetStreets(city, province, county, municipality, prefix *string) (*StreetRe
 
 	if prefix != nil && *prefix != "" {
 		normalizedPrefix := utils.NormalizePolishText(*prefix)
-		query += " AND (street LIKE ? COLLATE NOCASE OR street_normalized LIKE ? COLLATE NOCASE)"
-		args = append(args, *prefix+"%", normalizedPrefix+"%")
+		query += " AND street_normalized LIKE ? COLLATE NOCASE"
+		args = append(args, normalizedPrefix+"%")
 	}
 
 	query += " ORDER BY street"

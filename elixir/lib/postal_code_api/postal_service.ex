@@ -433,8 +433,8 @@ defmodule PostalCodeApi.PostalService do
 
     {conditions, bind_params} = if prefix do
       normalized_prefix = PolishNormalizer.normalize_polish_text(prefix)
-      condition = "AND (city_clean LIKE ? COLLATE NOCASE OR city_normalized LIKE ? COLLATE NOCASE)"
-      {conditions ++ [condition], bind_params ++ ["#{prefix}%", "#{normalized_prefix}%"]}
+      condition = "AND city_normalized LIKE ? COLLATE NOCASE"
+      {conditions ++ [condition], bind_params ++ ["#{normalized_prefix}%"]}
     else
       {conditions, bind_params}
     end
@@ -465,15 +465,20 @@ defmodule PostalCodeApi.PostalService do
     conditions = []
     bind_params = []
 
-    {conditions, bind_params} = add_condition(conditions, bind_params, city, "city_clean = ? COLLATE NOCASE")
+    {conditions, bind_params} = if city do
+      normalized_city = PolishNormalizer.normalize_polish_text(city)
+      add_condition(conditions, bind_params, normalized_city, "city_normalized = ? COLLATE NOCASE")
+    else
+      {conditions, bind_params}
+    end
     {conditions, bind_params} = add_condition(conditions, bind_params, province, "province = ? COLLATE NOCASE")
     {conditions, bind_params} = add_condition(conditions, bind_params, county, "county = ? COLLATE NOCASE")
     {conditions, bind_params} = add_condition(conditions, bind_params, municipality, "municipality = ? COLLATE NOCASE")
 
     {conditions, bind_params} = if prefix do
       normalized_prefix = PolishNormalizer.normalize_polish_text(prefix)
-      condition = "AND (street LIKE ? COLLATE NOCASE OR street_normalized LIKE ? COLLATE NOCASE)"
-      {conditions ++ [condition], bind_params ++ ["#{prefix}%", "#{normalized_prefix}%"]}
+      condition = "AND street_normalized LIKE ? COLLATE NOCASE"
+      {conditions ++ [condition], bind_params ++ ["#{normalized_prefix}%"]}
     else
       {conditions, bind_params}
     end

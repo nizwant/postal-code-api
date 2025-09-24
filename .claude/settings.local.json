@@ -9,7 +9,10 @@
       "Bash(go run:*)",
       "Bash(mix run:*)",
       "Bash(iex:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(gunicorn:*)",
+      "Bash(go build:*)",
+      "Bash(./postal-api)"
     ],
     "deny": [],
     "ask": []

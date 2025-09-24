@@ -387,11 +387,11 @@ def get_cities(province=None, county=None, municipality=None, prefix=None):
         params.append(municipality)
 
     if prefix:
-        # Use both city_clean and city_normalized for prefix matching (supports Polish chars)
+        # Use only city_normalized for prefix matching
         from polish_normalizer import normalize_polish_text
         normalized_prefix = normalize_polish_text(prefix)
-        query += " AND (city_clean LIKE ? COLLATE NOCASE OR city_normalized LIKE ? COLLATE NOCASE)"
-        params.extend([f"{prefix}%", f"{normalized_prefix}%"])
+        query += " AND city_normalized LIKE ? COLLATE NOCASE"
+        params.append(f"{normalized_prefix}%")
 
     query += " ORDER BY population DESC, city_clean"
 
@@ -414,8 +414,10 @@ def get_streets(city=None, province=None, county=None, municipality=None, prefix
     params = []
 
     if city:
-        query += " AND city_clean = ? COLLATE NOCASE"
-        params.append(city)
+        from polish_normalizer import normalize_polish_text
+        normalized_city = normalize_polish_text(city)
+        query += " AND city_normalized = ? COLLATE NOCASE"
+        params.append(normalized_city)
 
     if province:
         query += " AND province = ? COLLATE NOCASE"
@@ -430,14 +432,12 @@ def get_streets(city=None, province=None, county=None, municipality=None, prefix
         params.append(municipality)
 
     if prefix:
-        # Use both original and normalized street columns for prefix matching
+        # Use only street_normalized for prefix matching
         from polish_normalizer import normalize_polish_text
 
         normalized_prefix = normalize_polish_text(prefix)
-        query += (
-            " AND (street LIKE ? COLLATE NOCASE OR street_normalized LIKE ? COLLATE NOCASE)"
-        )
-        params.extend([f"{prefix}%", f"{normalized_prefix}%"])
+        query += " AND street_normalized LIKE ? COLLATE NOCASE"
+        params.append(f"{normalized_prefix}%")
 
     query += " ORDER BY street"
 
