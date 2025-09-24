@@ -1,14 +1,18 @@
 [project]
 name = "postal-code-api"
 version = "0.1.0"
-description = ""
+description = "Multi-technology Polish postal code API performance comparison framework"
 authors = [
-    {name = "nizwant",email = "mateusznizwantowski@gmail.com"}
+    {name = "nizwant", email = "mateusznizwantowski@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
 ]
+
+[project.urls]
+Repository = "https://github.com/nizwant/postal-code-api"
+Issues = "https://github.com/nizwant/postal-code-api/issues"
 
 [tool.poetry]
 package-mode = false
